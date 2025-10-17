@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>彩蛋一 - 重庆大学新生服务融合中心平台</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        /* ===== CSS变量系统 ===== */
+        :root {
+            /* 重庆大学主题色 - 蓝色为主 */
+            --cqu-blue: #1e4fa1;
+            --cqu-dark-blue: #153a7a;
+            --cqu-light-blue: #2a65c7;
+            --cqu-orange: #f57c00;
+            --cqu-red: #c62828;
+            --secondary-color: #86868b;
+            --accent-color: #1e88e5;
+            --background-color: #f5f5f7;
+            --surface-color: #ffffff;
+            --text-primary: #1d1d1f;
+            --text-secondary: #515154;
+            --text-tertiary: #86868b;
+            --border-color: #d2d2d7;
+            
+            /* 字体系统 */
+            --font-family: 'Times New Roman', Times, serif;
+            --font-weight-light: 300;
+            --font-weight-normal: 400;
+            --font-weight-medium: 500;
+            --font-weight-semibold: 600;
+            --font-weight-bold: 700;
+            
+            /* 间距系统 */
+            --spacing-xs: 8px;
+            --spacing-sm: 16px;
+            --spacing-md: 24px;
+            --spacing-lg: 32px;
+            --spacing-xl: 48px;
+            --spacing-xxl: 64px;
+            
+            /* 边框半径 */
+            --border-radius-sm: 8px;
+            --border-radius-md: 12px;
+            --border-radius-lg: 18px;
+            --border-radius-xl: 24px;
+            
+            /* 阴影 */
+            --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.08);
+            --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.12);
+            --shadow-lg: 0 8px 30px rgba(0, 0, 0, 0.16);
+            
+            /* 动效时长 */
+            --transition-fast: 0.2s;
+            --transition-normal: 0.4s;
+            --transition-slow: 0.6s;
+            --transition-slower: 0.8s;
+            
+            /* 布局尺寸 */
+            --header-height: 64px;
+            --container-max-width: 1200px;
+            --section-min-height: 80vh;
+        }
+
+        /* ===== 重置与基础样式 ===== */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            font-family: var(--font-family);
+            font-weight: var(--font-weight-normal);
+            background: linear-gradient(135deg, #ff9a9e 0%, #fad0c4 100%);
+            color: var(--text-primary);
+            line-height: 1.5;
+            overflow-x: hidden;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        /* ===== 布局容器 ===== */
+        .container {
+            max-width: var(--container-max-width);
+            margin: 0 auto;
+            padding: 0 var(--spacing-md);
+        }
+
+        /* ===== 导航栏样式 ===== */
+        header {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 90%;
+            height: var(--header-height);
+            background: rgba(255, 255, 255, 0.25);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-radius: var(--border-radius-xl);
+            box-shadow: var(--shadow-md);
+            z-index: 1000;
+            transition: all var(--transition-normal) ease;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+
+        header.scrolled {
+            background: rgba(255, 255, 255, 0.35);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .nav-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            height: 100%;
+            padding: 0 var(--spacing-md);
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+            text-decoration: none;
+        }
+
+        .logo-icon {
+            font-family: var(--font-family);
+            font-size: 1.8rem;
+            font-weight: var(--font-weight-bold);
+            letter-spacing: 4px;
+            background: linear-gradient(135deg, #c62828 0%, #ff7043 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            text-shadow: 
+                0 1px 0 rgba(255,255,255,0.5),
+                0 2px 4px rgba(0,0,0,0.2),
+                0 4px 8px rgba(0,0,0,0.1);
+            position: relative;
+        }
+
+        .logo-text {
+            display: flex;
+            flex-direction: column;
+            line-height: 1.2;
+        }
+
+        .logo-main {
+            font-size: 1.1rem;
+            font-weight: var(--font-weight-semibold);
+            color: var(--text-primary);
+        }
+
+        .logo-sub {
+            font-size: 0.7rem;
+            color: var(--text-secondary);
+        }
+
+        .nav-links {
+            display: flex;
+            list-style: none;
+            gap: var(--spacing-sm);
+        }
+
+        .nav-link {
+            text-decoration: none;
+            color: var(--text-secondary);
+            font-weight: var(--font-weight-medium);
+            font-size: 0.9rem;
+            transition: all var(--transition-normal) ease;
+            position: relative;
+            padding: var(--spacing-sm) var(--spacing-md);
+            background: rgba(255, 255, 255, 0.4);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border-radius: var(--border-radius-lg);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+        }
+
+        .nav-link:hover {
+            color: var(--cqu-blue);
+            transform: translateY(-5px) scale(1.05);
+            background: rgba(255, 255, 255, 0.6);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        /* ===== 彩蛋页面样式 ===== */
+        .easter-egg-page {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            text-align: center;
+        }
+
+        .easter-egg-container {
+            animation: bounce 2s infinite;
+        }
+
+        .easter-egg {
+            width: 200px;
+            height: 260px;
+            background: linear-gradient(135deg, #ff6b6b, #ffa726, #66bb6a, #42a5f5, #ab47bc);
+            border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%;
+            margin: 0 auto 30px;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+            position: relative;
+        }
+
+        .easter-egg::before {
+            content: '';
+            position: absolute;
+            top: 20%;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 120px;
+            height: 80px;
+            background: rgba(255,255,255,0.3);
+            border-radius: 50%;
+            filter: blur(10px);
+        }
+
+        .easter-egg-title {
+            font-size: 2.5rem;
+            color: #7e57c2;
+            font-weight: bold;
+            margin-bottom: 20px;
+        }
+
+        .easter-egg-description {
+            font-size: 1.2rem;
+            color: #555;
+            margin-bottom: 30px;
+            max-width: 500px;
+        }
+
+        /* iOS26液态按钮效果 */
+        .hero-cta {
+            display: inline-block;
+            padding: var(--spacing-sm) var(--spacing-lg);
+            background: linear-gradient(135deg, var(--cqu-blue) 0%, var(--cqu-light-blue) 100%);
+            color: white;
+            text-decoration: none;
+            border-radius: var(--border-radius-lg);
+            font-weight: var(--font-weight-medium);
+            font-size: 1.1rem;
+            transition: all var(--transition-normal) ease;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 
+                0 4px 14px 0 rgba(30, 79, 161, 0.3),
+                inset 0 1px 0 rgba(255, 255, 255, 0.2);
+        }
+
+        .hero-cta:hover {
+            transform: translateY(-2px) scale(1.02);
+            box-shadow: 
+                0 6px 20px 0 rgba(30, 79, 161, 0.4),
+                inset 0 1px 0 rgba(255, 255, 255, 0.2);
+        }
+
+        @keyframes bounce {
+            0%, 20%, 50%, 80%, 100% {
+                transform: translateY(0);
+            }
+            40% {
+                transform: translateY(-10px);
+            }
+            60% {
+                transform: translateY(-5px);
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- 网站头部 -->
+    <header id="header">
+        <div class="nav-container">
+            <a href="index.html" class="logo">
+                <div class="logo-icon">CQUFIC</div>
+                <div class="logo-text">
+                    <div class="logo-main">重庆大学新生服务融合中心平台</div>
+                    <div class="logo-sub">Chong Qing University Freshman Integration Center</div>
+                </div>
+            </a>
+            
+            <ul class="nav-links">
+                <li><a href="index.html" class="nav-link">首页</a></li>
+            </ul>
+        </div>
+    </header>
+
+    <!-- 彩蛋页面内容 -->
+    <section class="easter-egg-page">
+        <div class="container">
+            <div class="easter-egg-container">
+                <div class="easter-egg"></div>
+                <h1 class="easter-egg-title">彩蛋一</h1>
+                <p class="easter-egg-description">恭喜你发现了我们的第一个彩蛋！这个彩蛋页面使用了渐变背景和可爱的彩色蛋设计。</p>
+                <a href="index.html" class="hero-cta">返回首页</a>
+            </div>
+        </div>
+    </section>
+
+    <script>
+        // ===== 滚动效果 =====
+        window.addEventListener('scroll', () => {
+            // 导航栏滚动效果
+            const header = document.getElementById('header');
+            if (window.scrollY > 50) {
+                header.classList.add('scrolled');
+            } else {
+                header.classList.remove('scrolled');
+            }
+        });
+    </script>
+</body>
+</html>
