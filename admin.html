@@ -1,0 +1,781 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>管理员面板 - CQU FIC</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="shared.css">
+    <style>
+        body {
+            background: linear-gradient(160deg, #eef2fb 0%, #e6eaf4 60%, #dde5f5 100%);
+            min-height: 100vh;
+        }
+
+        .hidden { display: none !important; }
+
+        .page-wrapper {
+            padding-top: calc(var(--header-height) + 48px);
+            padding-bottom: var(--spacing-xxl);
+            min-height: 100vh;
+        }
+
+        /* ── 登录卡片 ── */
+        .admin-login-card {
+            max-width: 400px;
+            margin: var(--spacing-xxl) auto;
+            background: rgba(255,255,255,.88);
+            backdrop-filter: blur(24px);
+            border: 1px solid rgba(255,255,255,.55);
+            border-radius: var(--border-radius-xl);
+            padding: var(--spacing-xl) var(--spacing-xl) var(--spacing-lg);
+            box-shadow: var(--shadow-lg);
+            text-align: center;
+            animation: fadeInUp .5s ease both;
+        }
+        .admin-login-icon {
+            width: 64px; height: 64px;
+            background: var(--cqu-blue);
+            border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            margin: 0 auto var(--spacing-md);
+            font-size: 1.5rem; color: #fff;
+            box-shadow: 0 4px 16px rgba(30,79,161,.35);
+        }
+        .admin-login-title {
+            font-size: 1.45rem;
+            font-weight: var(--font-weight-semibold);
+            margin-bottom: var(--spacing-xs);
+        }
+        .admin-login-sub {
+            color: var(--text-tertiary);
+            font-size: .9rem;
+            margin-bottom: var(--spacing-lg);
+        }
+        .admin-login-card .form-input {
+            text-align: center;
+            letter-spacing: .1em;
+            margin-bottom: var(--spacing-md);
+        }
+        .admin-login-card .submit-btn { width: 100%; justify-content: center; }
+        .admin-back-link {
+            display: inline-block;
+            margin-top: var(--spacing-md);
+            font-size: .88rem;
+            color: var(--text-tertiary);
+            text-decoration: none;
+            transition: color var(--transition-fast);
+        }
+        .admin-back-link:hover { color: var(--cqu-blue); }
+
+        /* ── 管理面板 ── */
+        .admin-topbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: var(--spacing-sm);
+            background: rgba(255,255,255,.82);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255,255,255,.5);
+            border-radius: var(--border-radius-xl);
+            padding: var(--spacing-md) var(--spacing-lg);
+            box-shadow: var(--shadow-sm);
+            margin-bottom: var(--spacing-lg);
+            animation: fadeInUp .4s ease both;
+        }
+        .admin-topbar-title {
+            font-size: 1.1rem;
+            font-weight: var(--font-weight-semibold);
+            color: var(--text-primary);
+            display: flex; align-items: center; gap: 8px;
+        }
+        .admin-topbar-title i { color: var(--cqu-blue); }
+
+        .admin-card {
+            background: rgba(255,255,255,.82);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255,255,255,.5);
+            border-radius: var(--border-radius-xl);
+            padding: var(--spacing-lg);
+            box-shadow: var(--shadow-sm);
+            margin-bottom: var(--spacing-lg);
+            animation: fadeInUp .45s ease both;
+        }
+        .admin-section-title {
+            font-size: 1rem;
+            font-weight: var(--font-weight-semibold);
+            color: var(--text-primary);
+            margin-bottom: var(--spacing-md);
+            display: flex; align-items: center; gap: 8px;
+        }
+        .admin-section-title i { color: var(--cqu-blue); }
+
+        /* 帖子列表 */
+        .admin-post-item {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-md);
+            padding: var(--spacing-md) 0;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .admin-post-item:last-child { border-bottom: none; }
+        .admin-post-info { flex: 1; min-width: 0; }
+        .admin-post-title {
+            font-weight: var(--font-weight-medium);
+            color: var(--text-primary);
+            margin-bottom: 4px;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+        .admin-post-meta {
+            font-size: .8rem;
+            color: var(--text-tertiary);
+            display: flex; gap: var(--spacing-sm); flex-wrap: wrap; align-items: center;
+        }
+        .admin-post-actions { display: flex; gap: 8px; flex-shrink: 0; }
+
+        .admin-btn {
+            padding: 5px 14px;
+            font-size: .82rem;
+            font-family: var(--font-family);
+            border-radius: var(--border-radius-md);
+            border: 1.5px solid;
+            cursor: pointer;
+            background: transparent;
+            transition: all var(--transition-fast);
+            white-space: nowrap;
+        }
+        .admin-btn-edit   { border-color: var(--cqu-blue);  color: var(--cqu-blue); }
+        .admin-btn-edit:hover   { background: var(--cqu-blue);  color: #fff; }
+        .admin-btn-delete { border-color: var(--cqu-red);   color: var(--cqu-red); }
+        .admin-btn-delete:hover { background: var(--cqu-red);   color: #fff; }
+        .admin-btn-approve { border-color: #2e7d32; color: #2e7d32; }
+        .admin-btn-approve:hover { background: #2e7d32; color: #fff; }
+
+        /* 留言列表 */
+        .admin-comment-item {
+            padding: var(--spacing-md) 0;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .admin-comment-item:last-child { border-bottom: none; }
+        .admin-comment-item.is-hidden { opacity: .55; }
+        .admin-comment-header {
+            display: flex; align-items: center; gap: var(--spacing-sm);
+            flex-wrap: wrap; margin-bottom: var(--spacing-xs);
+        }
+        .admin-comment-author { font-weight: var(--font-weight-semibold); color: var(--cqu-blue); }
+        .admin-comment-contact {
+            font-size: .78rem; color: var(--text-tertiary);
+            display: flex; align-items: center; gap: 4px;
+        }
+        .admin-comment-date { font-size: .78rem; color: var(--text-tertiary); margin-left: auto; }
+        .admin-comment-content { font-size: .92rem; color: var(--text-primary); margin-bottom: var(--spacing-sm); }
+        .admin-comment-post { font-size: .78rem; color: var(--text-tertiary); margin-bottom: var(--spacing-sm); }
+
+        .status-badge {
+            font-size: .72rem;
+            padding: 2px 8px;
+            border-radius: 999px;
+            font-weight: var(--font-weight-medium);
+        }
+        .status-ok     { background: rgba(46,125,50,.12);  color: #2e7d32; }
+        .status-hidden { background: rgba(198,40,40,.12);  color: var(--cqu-red); }
+
+        /* 表单通用 */
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: var(--spacing-md);
+            margin-bottom: var(--spacing-md);
+        }
+        .form-field { display: flex; flex-direction: column; gap: 6px; }
+        .form-field label {
+            font-size: .85rem;
+            font-weight: var(--font-weight-medium);
+            color: var(--text-secondary);
+        }
+        .form-field label .required { color: var(--cqu-red); margin-left: 2px; }
+        .form-field label .hint { font-weight: 400; color: var(--text-tertiary); font-size: .78rem; }
+
+        .form-input, .form-textarea {
+            width: 100%;
+            padding: 10px var(--spacing-sm);
+            border: 1.5px solid rgba(0,0,0,.1);
+            border-radius: var(--border-radius-md);
+            font-size: .95rem;
+            font-family: var(--font-family);
+            background: rgba(255,255,255,.7);
+            color: var(--text-primary);
+            transition: all var(--transition-fast) ease;
+            outline: none;
+            box-sizing: border-box;
+        }
+        .form-input:focus, .form-textarea:focus {
+            border-color: var(--cqu-blue);
+            background: rgba(255,255,255,.95);
+            box-shadow: 0 0 0 3px rgba(30,79,161,.08);
+        }
+        .form-textarea { height: 120px; resize: vertical; display: block; }
+        .form-submit-row { display: flex; justify-content: flex-end; }
+
+        .submit-btn {
+            display: inline-flex; align-items: center; gap: 8px;
+            padding: 10px var(--spacing-lg);
+            background: var(--cqu-blue); color: #fff;
+            border: none; border-radius: var(--border-radius-lg);
+            font-size: 1rem; font-weight: var(--font-weight-medium);
+            font-family: var(--font-family); cursor: pointer;
+            transition: all .3s cubic-bezier(.175,.885,.32,1.275);
+            box-shadow: 0 4px 14px rgba(30,79,161,.35);
+        }
+        .submit-btn:hover {
+            background: var(--cqu-dark-blue);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(30,79,161,.45);
+        }
+        .submit-btn:disabled { opacity: .6; cursor: not-allowed; transform: none !important; }
+
+        /* 编辑弹窗 */
+        .modal-overlay {
+            position: fixed; inset: 0; z-index: 2000;
+            background: rgba(0,0,0,.4);
+            backdrop-filter: blur(4px);
+            display: flex; align-items: center; justify-content: center;
+            padding: var(--spacing-md);
+        }
+        .modal-card {
+            background: rgba(255,255,255,.97);
+            border-radius: var(--border-radius-xl);
+            padding: var(--spacing-xl);
+            width: 100%; max-width: 680px;
+            max-height: 90vh; overflow-y: auto;
+            box-shadow: var(--shadow-lg);
+            animation: fadeInUp .3s ease both;
+        }
+        .modal-title {
+            font-size: 1.15rem;
+            font-weight: var(--font-weight-semibold);
+            margin-bottom: var(--spacing-lg);
+        }
+        .modal-footer {
+            display: flex; justify-content: flex-end;
+            gap: var(--spacing-sm); margin-top: var(--spacing-lg);
+        }
+        .btn-cancel {
+            padding: 9px var(--spacing-lg);
+            border-radius: var(--border-radius-lg);
+            border: 1.5px solid var(--border-color);
+            background: transparent;
+            font-family: var(--font-family); font-size: .95rem;
+            cursor: pointer; color: var(--text-secondary);
+            transition: all var(--transition-fast);
+        }
+        .btn-cancel:hover { background: var(--border-color); }
+
+        /* Toast */
+        .toast {
+            position: fixed; bottom: var(--spacing-xl); left: 50%;
+            transform: translateX(-50%) translateY(20px);
+            opacity: 0;
+            background: rgba(29,29,31,.92); backdrop-filter: blur(20px);
+            color: #fff; padding: 12px 24px;
+            border-radius: 999px; font-size: .95rem;
+            z-index: 9999;
+            animation: toastIn .35s cubic-bezier(.175,.885,.32,1.275) forwards;
+            white-space: nowrap; pointer-events: none;
+        }
+        .toast.out { animation: toastOut .3s ease forwards; }
+        @keyframes toastIn  { to { transform: translateX(-50%) translateY(0); opacity: 1; } }
+        @keyframes toastOut {
+            from { transform: translateX(-50%) translateY(0); opacity: 1; }
+            to   { transform: translateX(-50%) translateY(20px); opacity: 0; }
+        }
+
+        @media (max-width: 768px) {
+            .form-row { grid-template-columns: 1fr; }
+            .admin-post-item { flex-wrap: wrap; }
+        }
+    </style>
+</head>
+<body>
+    <!-- Header 由 shared.js 自动注入 -->
+
+    <div class="page-wrapper">
+        <div class="container">
+
+            <!-- ══ 登录卡片 ══ -->
+            <div id="loginSection">
+                <div class="admin-login-card">
+                    <div class="admin-login-icon"><i class="fas fa-lock"></i></div>
+                    <h2 class="admin-login-title">管理员入口</h2>
+                    <p class="admin-login-sub">此页面仅限授权管理员访问</p>
+                    <label for="adminPasswordInput" style="display:none">管理员密码</label>
+                    <input type="password" id="adminPasswordInput" class="form-input"
+                           placeholder="请输入管理员密码"
+                           onkeydown="if(event.key==='Enter') adminLogin()">
+                    <button class="submit-btn" onclick="adminLogin()">
+                        <i class="fas fa-sign-in-alt"></i> 登录
+                    </button>
+                    <br>
+                    <a href="talking.html" class="admin-back-link">
+                        <i class="fas fa-arrow-left"></i> 返回论坛
+                    </a>
+                </div>
+            </div>
+
+            <!-- ══ 管理面板 ══ -->
+            <div id="adminPanel" class="hidden">
+                <!-- 顶栏 -->
+                <div class="admin-topbar">
+                    <span class="admin-topbar-title">
+                        <i class="fas fa-cog"></i> 管理员面板
+                    </span>
+                    <div style="display:flex;gap:var(--spacing-sm);align-items:center;flex-wrap:wrap">
+                        <button class="cat-btn active" id="adminTabPosts"
+                                onclick="switchTab('posts')">
+                            <i class="fas fa-newspaper"></i> 帖子管理
+                        </button>
+                        <button class="cat-btn" id="adminTabComments"
+                                onclick="switchTab('comments')">
+                            <i class="fas fa-comments"></i> 留言管理
+                        </button>
+                        <a href="talking.html" class="cat-btn" style="text-decoration:none">
+                            <i class="fas fa-arrow-left"></i> 返回论坛
+                        </a>
+                        <button class="cat-btn" style="color:var(--cqu-red)" onclick="adminLogout()">
+                            <i class="fas fa-sign-out-alt"></i> 退出
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 帖子管理 tab -->
+                <div id="tabPosts">
+                    <div class="admin-card">
+                        <h3 class="admin-section-title"><i class="fas fa-plus"></i> 新建帖子</h3>
+                        <div class="form-row">
+                            <div class="form-field">
+                                <label for="newPostId">帖子 ID<span class="required">*</span>
+                                    <span class="hint">（英文，唯一）</span></label>
+                                <input class="form-input" id="newPostId" placeholder="例如：notice-2026-09">
+                            </div>
+                            <div class="form-field">
+                                <label for="newPostCategory">分类<span class="required">*</span></label>
+                                <select class="form-input" id="newPostCategory">
+                                    <option>通知公告</option>
+                                    <option>校园生活</option>
+                                    <option>学习资源</option>
+                                    <option>互助问答</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-field" style="margin-bottom:var(--spacing-md)">
+                            <label for="newPostTitle">标题<span class="required">*</span></label>
+                            <input class="form-input" id="newPostTitle" placeholder="帖子标题">
+                        </div>
+                        <div class="form-field" style="margin-bottom:var(--spacing-md)">
+                            <label for="newPostSummary">摘要<span class="required">*</span>
+                                <span class="hint">（显示在卡片，50字以内）</span></label>
+                            <input class="form-input" id="newPostSummary" placeholder="一句话描述">
+                        </div>
+                        <div class="form-field" style="margin-bottom:var(--spacing-md)">
+                            <label for="newPostContent">正文<span class="required">*</span>
+                                <span class="hint">（支持 HTML：&lt;p&gt; &lt;h3&gt; &lt;ul&gt; &lt;li&gt; &lt;strong&gt;）</span></label>
+                            <textarea class="form-textarea" id="newPostContent" style="height:180px"
+                                      placeholder="&lt;p&gt;正文内容...&lt;/p&gt;"></textarea>
+                        </div>
+                        <div class="form-submit-row">
+                            <button class="submit-btn" onclick="adminCreatePost()">
+                                <i class="fas fa-paper-plane"></i> 发布帖子
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="admin-card">
+                        <h3 class="admin-section-title"><i class="fas fa-list"></i> 已发布帖子</h3>
+                        <div id="adminPostsList"><p style="color:var(--text-tertiary)">加载中…</p></div>
+                    </div>
+                </div>
+
+                <!-- 留言管理 tab -->
+                <div id="tabComments" class="hidden">
+                    <div class="admin-card">
+                        <h3 class="admin-section-title"><i class="fas fa-comments"></i> 所有留言</h3>
+                        <div style="margin-bottom:var(--spacing-md);display:flex;gap:var(--spacing-sm);flex-wrap:wrap;align-items:center">
+                            <label for="commentFilterPost" style="font-size:.9rem;color:var(--text-secondary)">筛选帖子：</label>
+                            <select class="form-input" id="commentFilterPost"
+                                    style="width:auto;max-width:300px"
+                                    onchange="adminLoadComments()">
+                                <option value="">全部帖子</option>
+                            </select>
+                        </div>
+                        <div id="adminCommentsList"><p style="color:var(--text-tertiary)">加载中…</p></div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <script src="shared.js"></script>
+    <script>
+    /* ── 配置 ── */
+    const WORKER_URL = 'https://cqufic-comment.notetopdf.workers.dev';
+
+    /* ── 状态 ── */
+    let adminToken    = sessionStorage.getItem('adminToken') || null;
+    let allPosts      = [];
+    let editingPostId = null;
+
+    /* ══════════════════════════════════════════
+       启动：检查是否已有 token
+    ══════════════════════════════════════════ */
+    (async function init() {
+        if (adminToken) {
+            // 已有 token，直接尝试进入面板
+            const valid = await verifyToken(adminToken);
+            if (valid) {
+                showPanel();
+            } else {
+                // token 失效，清除并显示登录框
+                adminToken = null;
+                sessionStorage.removeItem('adminToken');
+            }
+        }
+    })();
+
+    async function verifyToken(token) {
+        try {
+            const res = await fetch(`${WORKER_URL}/api/admin/posts`, {
+                headers: { 'X-Admin-Token': token }
+            });
+            return res.ok;
+        } catch { return false; }
+    }
+
+    /* ══════════════════════════════════════════
+       登录 / 登出
+    ══════════════════════════════════════════ */
+    async function adminLogin() {
+        const password = document.getElementById('adminPasswordInput').value;
+        if (!password) { showToast('请输入密码', 'warn'); return; }
+
+        const btn = document.querySelector('#loginSection .submit-btn');
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> 验证中…';
+
+        try {
+            const res = await fetch(`${WORKER_URL}/api/admin/login`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ password }),
+            });
+            const data = await res.json();
+            if (!res.ok) {
+                showToast(data.error || '密码错误', 'error');
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-sign-in-alt"></i> 登录';
+                return;
+            }
+            adminToken = data.token;
+            sessionStorage.setItem('adminToken', adminToken);
+            showToast('登录成功 ✓');
+            showPanel();
+        } catch (e) {
+            showToast('连接失败，请稍后重试', 'error');
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-sign-in-alt"></i> 登录';
+        }
+    }
+
+    function adminLogout() {
+        adminToken = null;
+        sessionStorage.removeItem('adminToken');
+        document.getElementById('adminPanel').classList.add('hidden');
+        document.getElementById('loginSection').classList.remove('hidden');
+        document.getElementById('adminPasswordInput').value = '';
+        showToast('已退出登录');
+    }
+
+    function showPanel() {
+        document.getElementById('loginSection').classList.add('hidden');
+        document.getElementById('adminPanel').classList.remove('hidden');
+        adminLoadPosts();
+        loadAllPostsForFilter();
+    }
+
+    /* ══════════════════════════════════════════
+       Tab 切换
+    ══════════════════════════════════════════ */
+    function switchTab(tab) {
+        document.getElementById('tabPosts').classList.toggle('hidden', tab !== 'posts');
+        document.getElementById('tabComments').classList.toggle('hidden', tab !== 'comments');
+        document.getElementById('adminTabPosts').classList.toggle('active', tab === 'posts');
+        document.getElementById('adminTabComments').classList.toggle('active', tab === 'comments');
+        if (tab === 'comments') adminLoadComments();
+    }
+
+    /* ══════════════════════════════════════════
+       帖子管理
+    ══════════════════════════════════════════ */
+    async function adminLoadPosts() {
+        const el = document.getElementById('adminPostsList');
+        el.innerHTML = '<p style="color:var(--text-tertiary)">加载中…</p>';
+        try {
+            const res = await fetch(`${WORKER_URL}/api/posts`);
+            allPosts = await res.json();
+            if (!allPosts.length) {
+                el.innerHTML = '<p style="color:var(--text-tertiary)">暂无帖子</p>';
+                return;
+            }
+            el.innerHTML = allPosts.map(p => `
+                <div class="admin-post-item">
+                    <div class="admin-post-info">
+                        <div class="admin-post-title">${esc(p.title)}</div>
+                        <div class="admin-post-meta">
+                            <span class="post-category-badge">${p.category}</span>
+                            <span>${p.date}</span>
+                            ${p.is_pinned ? '<span style="color:var(--cqu-orange)">📌 置顶</span>' : ''}
+                        </div>
+                    </div>
+                    <div class="admin-post-actions">
+                        <button class="admin-btn admin-btn-edit" onclick="openEditPost('${esc(p.id)}')">
+                            <i class="fas fa-edit"></i> 编辑
+                        </button>
+                        <button class="admin-btn admin-btn-delete" onclick="adminDeletePost('${esc(p.id)}', this)">
+                            <i class="fas fa-trash"></i> 删除
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+        } catch (e) {
+            el.innerHTML = '<p style="color:var(--cqu-red)">加载失败，请检查网络</p>';
+        }
+    }
+
+    async function adminCreatePost() {
+        const id       = document.getElementById('newPostId').value.trim();
+        const title    = document.getElementById('newPostTitle').value.trim();
+        const category = document.getElementById('newPostCategory').value;
+        const summary  = document.getElementById('newPostSummary').value.trim();
+        const content  = document.getElementById('newPostContent').value.trim();
+        if (!id || !title || !summary || !content) {
+            showToast('请填写所有必填项', 'warn'); return;
+        }
+        const res = await fetch(`${WORKER_URL}/api/admin/posts`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-Admin-Token': adminToken },
+            body: JSON.stringify({ id, title, category, summary, content }),
+        });
+        const data = await res.json();
+        if (!res.ok) { showToast(data.error || '发布失败', 'error'); return; }
+        showToast('帖子已发布！✓');
+        ['newPostId','newPostTitle','newPostSummary','newPostContent']
+            .forEach(i => document.getElementById(i).value = '');
+        adminLoadPosts();
+    }
+
+    async function adminDeletePost(id, btn) {
+        if (!confirm(`确定删除帖子「${id}」？此操作不可撤销。`)) return;
+        btn.disabled = true;
+        const res = await fetch(`${WORKER_URL}/api/admin/posts/${encodeURIComponent(id)}`, {
+            method: 'DELETE',
+            headers: { 'X-Admin-Token': adminToken },
+        });
+        if (!res.ok) { showToast('删除失败', 'error'); btn.disabled = false; return; }
+        showToast('已删除');
+        adminLoadPosts();
+    }
+
+    /* ── 编辑弹窗 ── */
+    async function openEditPost(id) {
+        const post = allPosts.find(p => p.id === id);
+        if (!post) return;
+        editingPostId = id;
+
+        const overlay = document.createElement('div');
+        overlay.className = 'modal-overlay';
+        overlay.id = 'editModal';
+        overlay.innerHTML = `
+            <div class="modal-card">
+                <h3 class="modal-title"><i class="fas fa-edit"></i> 编辑帖子</h3>
+                <div class="form-field" style="margin-bottom:var(--spacing-md)">
+                    <label for="editTitle">标题</label>
+                    <input class="form-input" id="editTitle" value="${esc(post.title)}">
+                </div>
+                <div class="form-row">
+                    <div class="form-field">
+                        <label for="editCategory">分类</label>
+                        <select class="form-input" id="editCategory">
+                            ${['通知公告','校园生活','学习资源','互助问答'].map(c =>
+                                `<option ${c === post.category ? 'selected' : ''}>${c}</option>`
+                            ).join('')}
+                        </select>
+                    </div>
+                    <div class="form-field">
+                        <label for="editDate">日期</label>
+                        <input class="form-input" type="date" id="editDate" value="${post.date}">
+                    </div>
+                </div>
+                <div class="form-field" style="margin:var(--spacing-md) 0">
+                    <label for="editSummary">摘要</label>
+                    <input class="form-input" id="editSummary" value="${esc(post.summary)}">
+                </div>
+                <div class="form-field">
+                    <label for="editContent">正文（HTML）</label>
+                    <textarea class="form-textarea" id="editContent" style="height:200px">${esc(post.content)}</textarea>
+                </div>
+                <label style="display:flex;align-items:center;gap:8px;margin-top:var(--spacing-md);font-size:.9rem;cursor:pointer">
+                    <input type="checkbox" id="editPinned" ${post.is_pinned ? 'checked' : ''}> 置顶此帖子
+                </label>
+                <div class="modal-footer">
+                    <button class="btn-cancel" onclick="document.getElementById('editModal').remove()">取消</button>
+                    <button class="submit-btn" onclick="adminSavePost()">
+                        <i class="fas fa-save"></i> 保存
+                    </button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(overlay);
+    }
+
+    async function adminSavePost() {
+        const body = {
+            title:     document.getElementById('editTitle').value.trim(),
+            category:  document.getElementById('editCategory').value,
+            date:      document.getElementById('editDate').value,
+            summary:   document.getElementById('editSummary').value.trim(),
+            content:   document.getElementById('editContent').value.trim(),
+            is_pinned: document.getElementById('editPinned').checked,
+        };
+        const res = await fetch(`${WORKER_URL}/api/admin/posts/${encodeURIComponent(editingPostId)}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json', 'X-Admin-Token': adminToken },
+            body: JSON.stringify(body),
+        });
+        if (!res.ok) { showToast('保存失败', 'error'); return; }
+        document.getElementById('editModal').remove();
+        showToast('已保存 ✓');
+        adminLoadPosts();
+    }
+
+    /* ══════════════════════════════════════════
+       留言管理
+    ══════════════════════════════════════════ */
+    async function loadAllPostsForFilter() {
+        try {
+            const res = await fetch(`${WORKER_URL}/api/posts`);
+            allPosts = await res.json();
+            const sel = document.getElementById('commentFilterPost');
+            sel.innerHTML = '<option value="">全部帖子</option>' +
+                allPosts.map(p => `<option value="${esc(p.id)}">${esc(p.title)}</option>`).join('');
+        } catch {}
+    }
+
+    async function adminLoadComments() {
+        const postId = document.getElementById('commentFilterPost').value;
+        const url = `${WORKER_URL}/api/admin/comments` +
+                    (postId ? `?post_id=${encodeURIComponent(postId)}` : '');
+        const el = document.getElementById('adminCommentsList');
+        el.innerHTML = '<p style="color:var(--text-tertiary)">加载中…</p>';
+        try {
+            const res = await fetch(url, { headers: { 'X-Admin-Token': adminToken } });
+            const comments = await res.json();
+
+            if (!comments.length) {
+                el.innerHTML = '<p style="color:var(--text-tertiary)">暂无留言</p>'; return;
+            }
+            const postMap = Object.fromEntries(allPosts.map(p => [p.id, p.title]));
+            el.innerHTML = comments.map(c => `
+                <div class="admin-comment-item ${c.is_approved ? '' : 'is-hidden'}" id="ac-${c.id}">
+                    <div class="admin-comment-header">
+                        <span class="admin-comment-author">${esc(c.nickname)}</span>
+                        ${c.contact ? `<span class="admin-comment-contact">
+                            <i class="fas fa-envelope"></i> ${esc(c.contact)}</span>` : ''}
+                        <span class="status-badge ${c.is_approved ? 'status-ok' : 'status-hidden'}">
+                            ${c.is_approved ? '已显示' : '已隐藏'}
+                        </span>
+                        <span class="admin-comment-date">${fmtDate(c.created_at)}</span>
+                    </div>
+                    ${!postId ? `<div class="admin-comment-post">
+                        📄 ${esc(postMap[c.post_id] || c.post_id)}</div>` : ''}
+                    ${c.parent_id ?
+                        '<div style="font-size:.78rem;color:var(--text-tertiary);margin-bottom:4px">↩ 回复</div>' : ''}
+                    <div class="admin-comment-content">${fmtContent(c.content)}</div>
+                    <div class="admin-post-actions">
+                        <button class="admin-btn ${c.is_approved ? 'admin-btn-delete' : 'admin-btn-approve'}"
+                                onclick="adminToggleComment('${c.id}', ${!c.is_approved})">
+                            ${c.is_approved ? '隐藏' : '显示'}
+                        </button>
+                        <button class="admin-btn admin-btn-delete"
+                                onclick="adminDeleteComment('${c.id}', this)">删除</button>
+                    </div>
+                </div>
+            `).join('');
+        } catch {
+            el.innerHTML = '<p style="color:var(--cqu-red)">加载失败</p>';
+        }
+    }
+
+    async function adminToggleComment(id, newApproved) {
+        const res = await fetch(`${WORKER_URL}/api/admin/comments/${id}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json', 'X-Admin-Token': adminToken },
+            body: JSON.stringify({ is_approved: newApproved }),
+        });
+        if (!res.ok) { showToast('操作失败', 'error'); return; }
+        showToast(newApproved ? '已显示' : '已隐藏');
+        adminLoadComments();
+    }
+
+    async function adminDeleteComment(id, btn) {
+        if (!confirm('确定永久删除这条留言？')) return;
+        btn.disabled = true;
+        const res = await fetch(`${WORKER_URL}/api/admin/comments/${id}`, {
+            method: 'DELETE',
+            headers: { 'X-Admin-Token': adminToken },
+        });
+        if (!res.ok) { showToast('删除失败', 'error'); btn.disabled = false; return; }
+        showToast('已删除');
+        adminLoadComments();
+    }
+
+    /* ══════════════════════════════════════════
+       工具函数
+    ══════════════════════════════════════════ */
+    function esc(s = '') {
+        return String(s)
+            .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+            .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    function fmtDate(iso) {
+        return new Date(iso).toLocaleDateString('zh-CN', {
+            year: 'numeric', month: 'long', day: 'numeric'
+        });
+    }
+
+    function fmtContent(text = '') {
+        return esc(text)
+            .replace(/@([\u4e00-\u9fa5\w]+)/g, '<span style="color:var(--cqu-blue);font-weight:600">@$1</span>')
+            .replace(/\n/g, '<br>');
+    }
+
+    function showToast(msg, type = 'success') {
+        const colors = {
+            success: 'rgba(29,29,31,.92)',
+            warn:    'rgba(245,124,0,.92)',
+            error:   'rgba(198,40,40,.92)'
+        };
+        const toast = document.createElement('div');
+        toast.className = 'toast';
+        toast.style.background = colors[type] || colors.success;
+        toast.textContent = msg;
+        document.body.appendChild(toast);
+        setTimeout(() => {
+            toast.classList.add('out');
+            toast.addEventListener('animationend', () => toast.remove(), { once: true });
+        }, 2800);
+    }
+    </script>
+</body>
+</html>

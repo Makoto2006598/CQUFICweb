@@ -1,0 +1,968 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>CQU 3D 导航 - 液态版</title>
+    
+    <script src='https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js'></script>
+    <link href='https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css' rel='stylesheet' />
+
+    <style>
+        /* --- 0. 全局物理世界设定 --- */
+        body { 
+            margin: 0; padding: 0; 
+            font-family: "SF Pro Display", -apple-system, BlinkMacSystemFont, sans-serif; 
+            overflow: hidden; 
+            background-color: #000; /* 深色底更能衬托玻璃感 */
+        }
+        #map { position: absolute; top: 0; bottom: 0; width: 100%; }
+
+        /* --- 1. 液态玻璃核心材质 (Magic Material) --- */
+        :root {
+            --glass-bg: rgba(255, 255, 255, 0.65);
+            --glass-border: rgba(255, 255, 255, 0.4);
+            --glass-highlight: rgba(255, 255, 255, 0.8);
+            --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            --blur: blur(40px) saturate(180%);
+            --ease-elastic: cubic-bezier(0.25, 0.8, 0.25, 1);
+        }
+
+        .liquid-glass {
+            background: var(--glass-bg);
+            backdrop-filter: var(--blur);
+            -webkit-backdrop-filter: var(--blur);
+            border: 1px solid var(--glass-border);
+            border-top: 1px solid var(--glass-highlight); /* 顶部高光，模拟厚度 */
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            box-shadow: 
+                0 20px 40px rgba(0,0,0,0.05), 
+                inset 0 0 0 1px rgba(255,255,255,0.2); /* 内发光 */
+        }
+
+        /* --- 2. 呼吸流光动画 --- */
+        @keyframes float-glow {
+            0% { box-shadow: 0 10px 30px rgba(0,122,255,0.1); }
+            50% { box-shadow: 0 15px 40px rgba(0,122,255,0.3); }
+            100% { box-shadow: 0 10px 30px rgba(0,122,255,0.1); }
+        }
+
+        /* --- UI 布局 --- */
+        .ui-overlay {
+            position: absolute; z-index: 10; width: 100%; height: 100%; pointer-events: none;
+            display: flex; flex-direction: column; justify-content: space-between;
+        }
+
+        /* --- 顶部搜索栏 (悬浮晶体) --- */
+        .top-bar { padding: 60px 20px 10px; pointer-events: auto; display: flex; justify-content: center; position: relative; }
+
+        .search-wrapper { width: 100%; max-width: 360px; position: relative; z-index: 50; }
+
+        .search-box {
+            height: 50px; border-radius: 25px; /* 全圆角 */
+            padding: 0 16px; display: flex; align-items: center;
+            transition: all 0.4s var(--ease-elastic);
+        }
+        .search-box:focus-within {
+            transform: scale(1.02) translateY(-2px);
+            background: rgba(255, 255, 255, 0.85);
+            box-shadow: 0 20px 50px rgba(0,0,0,0.15);
+        }
+
+        .icon-search { font-size: 18px; margin-right: 12px; filter: grayscale(1); opacity: 0.6; }
+        #search-input {
+            border: none; background: transparent; outline: none; font-size: 17px; width: 100%;
+            color: #000; font-weight: 500; letter-spacing: -0.5px;
+        }
+        #search-input::placeholder { color: #86868b; }
+
+        /* 下拉菜单 (液态展开) */
+        .search-results {
+            position: absolute; top: 60px; left: 0; width: 100%;
+            background: rgba(255, 255, 255, 0.7); backdrop-filter: blur(50px);
+            border-radius: 20px; box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+            max-height: 0; opacity: 0; overflow: hidden; /* 动画初始状态 */
+            transition: all 0.3s cubic-bezier(0.3, 0, 0, 1);
+            border: 1px solid rgba(255,255,255,0.4);
+        }
+        .search-results.show { max-height: 400px; opacity: 1; padding: 8px; }
+
+        .result-item {
+            padding: 12px 16px; border-radius: 14px; cursor: pointer;
+            display: flex; align-items: center; justify-content: space-between;
+            transition: background 0.2s;
+        }
+        .result-item:hover { background: rgba(255,255,255,0.5); }
+        .res-name { font-weight: 600; color: #1d1d1f; font-size: 15px; }
+        .res-campus { 
+            font-size: 11px; font-weight: 700; color: #fff; 
+            padding: 4px 8px; border-radius: 10px; letter-spacing: 0.5px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        /* --- 校区切换按钮 (玻璃球) --- */
+        .campus-btn {
+            position: absolute; right: 20px; top: 60px;
+            width: 50px; height: 50px; border-radius: 50%;
+            font-size: 22px; cursor: pointer; pointer-events: auto;
+            transition: all 0.3s var(--ease-elastic);
+            display: flex; align-items: center; justify-content: center;
+        }
+        .campus-btn:active { transform: scale(0.9); background: rgba(255,255,255,0.9); }
+
+        .campus-menu {
+            position: absolute; right: 20px; top: 120px;
+            width: 160px; padding: 8px; border-radius: 20px;
+            display: flex; flex-direction: column; gap: 6px;
+            transform-origin: top right;
+            transform: scale(0) translate(20px, -20px); opacity: 0;
+            transition: all 0.3s cubic-bezier(0.1, 0.7, 0.1, 1);
+        }
+        .campus-menu.open { transform: scale(1) translate(0, 0); opacity: 1; }
+
+        .menu-item { padding: 12px; border-radius: 12px; font-weight: 600; font-size: 14px; color: #333; transition: 0.2s; }
+        .menu-item.active { background: rgba(0,122,255,0.1); color: #007AFF; }
+        
+        /* --- 底部控制区 --- */
+        .bottom-area {
+            padding-bottom: 40px; pointer-events: auto;
+            /* 底部渐变遮罩，让卡片看起来是从屏幕边缘浮出来的 */
+            background: linear-gradient(to top, rgba(255,255,255,0.3) 0%, transparent 100%);
+            backdrop-filter: blur(5px);
+            -webkit-mask-image: linear-gradient(to top, black 40%, transparent 100%);
+        }
+
+        /* 胶囊过滤器 */
+        /* filter-scroll: 横向滚动，隐藏滚动条，两侧渐变遮罩 */
+        .filter-scroll-wrap {
+            position: relative;
+            overflow: hidden; /* 裁剪遮罩超出部分 */
+        }
+        /* 左侧渐变遮罩 */
+        .filter-scroll-wrap::before,
+        .filter-scroll-wrap::after {
+            content: '';
+            position: absolute; top: 0; bottom: 0;
+            width: 28px; z-index: 2; pointer-events: none;
+            transition: opacity 0.25s ease;
+        }
+        .filter-scroll-wrap::before {
+            left: 0;
+            background: linear-gradient(to right, rgba(245,247,252,0.92), transparent);
+        }
+        .filter-scroll-wrap::after {
+            right: 0;
+            background: linear-gradient(to left, rgba(245,247,252,0.92), transparent);
+        }
+        /* 滚到最左时隐藏左侧遮罩 */
+        .filter-scroll-wrap.at-start::before { opacity: 0; }
+        /* 滚到最右时隐藏右侧遮罩 */
+        .filter-scroll-wrap.at-end::after    { opacity: 0; }
+
+        .filter-scroll {
+            display: flex; gap: 10px;
+            padding: 8px 20px 14px;
+            overflow-x: auto;
+            overflow-y: hidden;
+            scrollbar-width: none;        /* Firefox */
+            -ms-overflow-style: none;     /* IE */
+            scroll-behavior: smooth;
+            -webkit-overflow-scrolling: touch;
+        }
+        .filter-scroll::-webkit-scrollbar { display: none; }
+        .filter-chip {
+            white-space: nowrap;      /* 不换行 */
+            flex-shrink: 0;           /* 不压缩 */
+            height: 36px;
+            padding: 0 16px;
+            border-radius: 18px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            display: flex; align-items: center;
+            transition: all 0.25s ease;
+            letter-spacing: 0.2px;
+            user-select: none;
+        }
+                .filter-chip.active { 
+            background: #1d1d1f; color: #fff; border-color: transparent;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.2); transform: translateY(-2px);
+        }
+
+        /* 3D 卡片 */
+        .cards-scroll { display: flex; gap: 16px; padding: 0 20px; overflow-x: auto; scrollbar-width: none; perspective: 1000px; }
+        
+        .place-card {
+            min-width: 150px; height: 110px; border-radius: 24px; padding: 16px;
+            display: flex; flex-direction: column; justify-content: space-between;
+            transition: all 0.4s var(--ease-elastic);
+            position: relative; overflow: hidden;
+        }
+        
+        /* 卡片悬停时的液态光泽 */
+        .place-card::after {
+            content: ''; position: absolute; top: 0; left: -100%; width: 100%; height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+            transition: 0.5s; pointer-events: none;
+        }
+        .place-card:hover { transform: translateY(-8px) scale(1.02); box-shadow: 0 20px 40px rgba(0,0,0,0.1); }
+        .place-card:hover::after { left: 100%; }
+
+        .place-card.selected { 
+            background: rgba(255,255,255,0.9); border: 2px solid #007AFF; 
+            animation: float-glow 3s infinite ease-in-out;
+        }
+
+        .card-icon { 
+            width: 38px; height: 38px; border-radius: 14px; 
+            display: flex; align-items: center; justify-content: center; font-size: 18px; color: white;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.1);
+        }
+        
+        /* 霓虹渐变色 */
+        .c-main { background: linear-gradient(135deg, #FF3B30, #FF9500); } 
+        .c-teach { background: linear-gradient(135deg, #FFCC00, #FF9500); } 
+        .c-sport { background: linear-gradient(135deg, #00C7BE, #007AFF); } 
+        .c-food { background: linear-gradient(135deg, #30D158, #00C7BE); } 
+        .c-life { background: linear-gradient(135deg, #BF5AF2, #5E5CE6); }
+        .c-library { background: linear-gradient(135deg, #1e4fa1, #2a65c7); }   /* 图书馆 — CQU蓝 */
+        .c-gate    { background: linear-gradient(135deg, #8E8E93, #636366); }   /* 校门   — 深灰 */
+        .c-lab     { background: linear-gradient(135deg, #BF5AF2, #007AFF); }   /* 实验楼 — 紫蓝 */
+        .c-college { background: linear-gradient(135deg, #00C7BE, #30D158); }   /* 学院   — 青绿 */ 
+        
+        .badge-A { background: #007AFF; }
+        .badge-B { background: #FF9500; }
+        .badge-C { background: #30D158; }
+        .badge-HUXI { background: #AF52DE; }
+        .badge-LJ { background: #FF2D55; }
+
+        /* --- 地图标记点 (液态水滴) --- */
+        .marker-pin {
+            width: 40px; height: 40px; border-radius: 50% 50% 50% 0;
+            background: #007AFF; position: absolute; transform: rotate(-45deg);
+            left: 50%; top: 50%; margin: -20px 0 0 -20px;
+            box-shadow: 0 10px 20px rgba(0, 122, 255, 0.4);
+            border: 3px solid rgba(255,255,255,0.8);
+            animation: pin-bounce 0.8s ease-out;
+        }
+        .marker-pin::after {
+            content: ''; width: 20px; height: 20px; margin: 7px 0 0 7px;
+            background: #fff; position: absolute; border-radius: 50%;
+        }
+        @keyframes pin-bounce {
+            0% { transform: translateY(-40px) rotate(-45deg); opacity: 0; }
+            60% { transform: translateY(10px) rotate(-45deg); }
+            80% { transform: translateY(-5px) rotate(-45deg); }
+            100% { transform: translateY(0) rotate(-45deg); opacity: 1; }
+        }
+
+
+        /* ── 移动端竖屏适配 ─────────────────────────── */
+        @media (max-width: 768px) {
+            .top-bar {
+                padding: calc(max(12px, env(safe-area-inset-top, 12px)) + 52px) 12px 8px;
+                gap: 10px;
+            }
+            .search-wrapper { max-width: none; flex: 1; }
+            .search-box { height: 44px; border-radius: 22px; }
+            #search-input { font-size: 16px; }
+            .campus-btn {
+                width: 44px; height: 44px; border-radius: 22px;
+                flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 20px;
+            }
+            .campus-menu { top: calc(44px + 8px); right: 0; left: auto; min-width: 148px; border-radius: 18px; }
+            .menu-item { padding: 12px 16px; font-size: 14px; }
+            .search-results { max-height: 52vh; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+            .bottom-area { padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px)); }
+            .filter-scroll { gap: 8px; padding: 10px 14px; -webkit-overflow-scrolling: touch; scroll-snap-type: x proximity; }
+            .filter-chip { height: 36px; padding: 0 14px; border-radius: 18px; font-size: 13px; white-space: nowrap; flex-shrink: 0; scroll-snap-align: start; }
+            .cards-scroll { padding: 0 14px; gap: 12px; -webkit-overflow-scrolling: touch; }
+            .place-card { min-width: 128px; height: 98px; border-radius: 18px; padding: 12px; cursor: pointer; }
+            .place-card:hover { transform: none; }
+            .place-card:active { transform: scale(0.97); transition: transform .1s; }
+        }
+        @media (max-width: 390px) {
+            .place-card { min-width: 112px; height: 90px; }
+            .filter-chip { height: 32px; padding: 0 12px; font-size: 12px; }
+        }
+
+        /* ── 定位按钮 ──────────────────────────────────────── */
+        .locate-btn {
+            position: absolute; left: 20px; top: 60px;
+            width: 50px; height: 50px; border-radius: 50%;
+            font-size: 20px; cursor: pointer; pointer-events: auto;
+            transition: all 0.3s var(--ease-elastic);
+            display: flex; align-items: center; justify-content: center;
+            border: none; outline: none;
+        }
+        .locate-btn:active { transform: scale(0.88); }
+        .locate-btn.locating { animation: locate-spin 1.2s linear infinite; }
+        .locate-btn.located  { color: #007AFF; }
+        @keyframes locate-spin {
+            from { transform: rotate(0deg); }
+            to   { transform: rotate(360deg); }
+        }
+
+        /* ── 用户蓝点 (iOS Maps 风格) ──────────────────────── */
+        .user-dot-wrapper {
+            width: 22px; height: 22px;
+            display: flex; align-items: center; justify-content: center;
+            position: relative;
+        }
+        /* 外层脉冲圆 */
+        .user-dot-pulse {
+            position: absolute;
+            width: 44px; height: 44px; border-radius: 50%;
+            background: rgba(0, 122, 255, 0.18);
+            animation: dot-pulse 2.4s ease-out infinite;
+        }
+        /* 中层光晕 */
+        .user-dot-ring {
+            position: absolute;
+            width: 22px; height: 22px; border-radius: 50%;
+            background: rgba(0, 122, 255, 0.22);
+        }
+        /* 内核蓝点 */
+        .user-dot-core {
+            width: 14px; height: 14px; border-radius: 50%;
+            background: #007AFF;
+            border: 2.5px solid #fff;
+            box-shadow: 0 2px 8px rgba(0,122,255,0.55);
+            position: relative; z-index: 1;
+        }
+        @keyframes dot-pulse {
+            0%   { transform: scale(0.7); opacity: 0.8; }
+            70%  { transform: scale(2.0); opacity: 0; }
+            100% { transform: scale(2.0); opacity: 0; }
+        }
+
+        /* ── Toast 通知 ─────────────────────────────────────── */
+        .map-toast {
+            position: fixed; top: 0; left: 50%; transform: translateX(-50%) translateY(-120%);
+            z-index: 9999; pointer-events: none;
+            display: flex; align-items: center; gap: 10px;
+            padding: 13px 20px; border-radius: 100px;
+            background: rgba(29, 29, 31, 0.82);
+            backdrop-filter: blur(32px) saturate(200%);
+            -webkit-backdrop-filter: blur(32px) saturate(200%);
+            border: 0.5px solid rgba(255,255,255,0.14);
+            box-shadow: 0 8px 32px rgba(0,0,0,0.28),
+                        inset 0 1px 0 rgba(255,255,255,0.10);
+            color: #fff; font-size: 14px; font-weight: 500;
+            white-space: nowrap; max-width: 90vw;
+            transition: transform 0.38s cubic-bezier(0.34,1.56,0.64,1),
+                        opacity 0.28s ease;
+            opacity: 0;
+        }
+        .map-toast.show {
+            transform: translateX(-50%) translateY(calc(max(10px, env(safe-area-inset-top,10px)) + 68px));
+            opacity: 1;
+        }
+        .map-toast.hide {
+            transform: translateX(-50%) translateY(-120%);
+            opacity: 0;
+            transition: transform 0.28s ease, opacity 0.22s ease;
+        }
+        .toast-icon { font-size: 17px; flex-shrink: 0; }
+
+    </style>
+    <link rel="stylesheet" href="glass.css">
+    <link rel="stylesheet" href="mobile.css">
+</head>
+<body>
+
+    <!-- Toast 通知 -->
+    <div class="map-toast" id="mapToast">
+        <span class="toast-icon" id="toastIcon"></span>
+        <span id="toastMsg"></span>
+    </div>
+
+    <div id='map'></div>
+
+    <div class="ui-overlay">
+        <!-- 顶部 -->
+        <div class="top-bar">
+            <!-- 定位按钮 -->
+            <button class="locate-btn liquid-glass" id="locateBtn" onclick="requestLocation()" title="定位到我的位置">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="3"/>
+                    <path d="M12 2v3M12 19v3M2 12h3M19 12h3"/>
+                    <circle cx="12" cy="12" r="8" stroke-dasharray="4 2" opacity="0.4"/>
+                </svg>
+            </button>
+
+            <!-- 搜索框 -->
+            <div class="search-wrapper">
+                <div class="search-box liquid-glass">
+                    <span class="icon-search">🔍</span>
+                    <input type="text" id="search-input" placeholder="Search CQU..." oninput="handleSearch(this.value)" onfocus="handleSearch(this.value)">
+                </div>
+                <!-- 搜索结果 -->
+                <div class="search-results liquid-glass" id="search-results"></div>
+            </div>
+            
+            <!-- 校区切换 -->
+            <button class="campus-btn liquid-glass" onclick="toggleMenu()">🏫</button>
+            <div class="campus-menu liquid-glass" id="campusMenu">
+                <div class="menu-item active" onclick="switchCampus('A', this)">老校区 A区</div>
+                <div class="menu-item" onclick="switchCampus('B', this)">老校区 B区</div>
+                <div class="menu-item" onclick="switchCampus('C', this)">老校区 C区</div>
+                <div class="menu-item" onclick="switchCampus('HUXI', this)">虎溪校区</div>
+                <div class="menu-item" onclick="switchCampus('LIANGJIANG', this)">两江校区</div>
+            </div>
+        </div>
+
+        <!-- 底部 -->
+        <div class="bottom-area">
+            <div class="filter-scroll-wrap at-start" id="filterWrap">
+            <div class="filter-scroll" id="filterScroll">
+                <div class="filter-chip active" onclick="filterCategory('all', this)">All</div>
+                <div class="filter-chip" onclick="filterCategory('landmark', this)">地标</div>
+                <div class="filter-chip" onclick="filterCategory('library', this)">图书馆</div>
+                <div class="filter-chip" onclick="filterCategory('gate', this)">校门</div>
+                <div class="filter-chip" onclick="filterCategory('teach', this)">教学楼</div>
+                <div class="filter-chip" onclick="filterCategory('lab', this)">实验楼</div>
+                <div class="filter-chip" onclick="filterCategory('college', this)">学院</div>
+                <div class="filter-chip" onclick="filterCategory('food', this)">食堂</div>
+                <div class="filter-chip" onclick="filterCategory('sport', this)">运动</div>
+                <div class="filter-chip" onclick="filterCategory('life', this)">生活</div>
+            </div>
+            </div>
+            <div class="cards-scroll" id="cards-container"></div>
+        </div>
+    </div>
+
+    <!-- 地图数据层：所有校区边界和地标数据集中在此文件维护 -->
+    <script src="map-data.js"></script>
+
+    <script>
+        mapboxgl.accessToken = 'YOUR_MAPBOX_TOKEN';
+
+        // ── 数据由 map-data.js 提供（RAW_BOUNDARIES / CAMPUS_DATA）──
+        // 修改地标、添加校区请编辑 map-data.js，无需改动本文件。
+
+                let activeCampus = 'A';
+        let currentMarker = null;
+
+        function calculateGeoInfo(points) {
+            let minLng = 180, maxLng = -180, minLat = 90, maxLat = -90, cLng = 0, cLat = 0;
+            points.forEach(p => {
+                const [lng, lat] = p;
+                if(lng < minLng) minLng = lng; if(lng > maxLng) maxLng = lng;
+                if(lat < minLat) minLat = lat; if(lat > maxLat) maxLat = lat;
+                cLng += lng; cLat += lat;
+            });
+            const padding = 0.003; 
+            return {
+                center: [cLng / points.length, cLat / points.length],
+                bounds: [[minLng - padding, minLat - padding], [maxLng + padding, maxLat + padding]],
+                sourceData: { 'type': 'Feature', 'geometry': { 'type': 'Polygon', 'coordinates': [[...points, points[0]]] }}
+            };
+        }
+
+        const initData = calculateGeoInfo(RAW_BOUNDARIES['A']);
+
+        // --- 初始化地图 (使用 Light Preset 但调整为更亮的效果) ---
+        const map = new mapboxgl.Map({
+            container: 'map',
+            style: 'mapbox://styles/mapbox/light-v11',
+            center: initData.center,
+            zoom: 16,
+            pitch: 55,
+            bearing: -30,
+            antialias: true,
+            maxBounds: initData.bounds
+        });
+
+        map.on('load', () => {
+            // 设置环境光，让建筑看起来更像陶瓷
+            map.setLight({ anchor: 'viewport', color: '#fff', intensity: 0.6 });
+
+            const labelLayerId = map.getStyle().layers.find(l => l.type === 'symbol' && l.layout['text-field']).id;
+            
+            // 3D 建筑 - 白色陶瓷质感
+            map.addLayer({
+                'id': '3d-buildings', 'source': 'composite', 'source-layer': 'building',
+                'filter': ['==', 'extrude', 'true'], 'type': 'fill-extrusion',
+                'paint': {
+                    'fill-extrusion-color': '#ffffff', // 纯白
+                    'fill-extrusion-height': ['interpolate', ['linear'], ['zoom'], 14, 0, 14.05, ['get', 'height']],
+                    'fill-extrusion-base': ['interpolate', ['linear'], ['zoom'], 14, 0, 14.05, ['get', 'min_height']],
+                    'fill-extrusion-opacity': 0.9,
+                    'fill-extrusion-ambient-occlusion-intensity': 0.3 // 环境光遮蔽
+                }
+            }, labelLayerId);
+
+            // 边界 - 极光蓝
+            map.addSource('campus-boundary', { 'type': 'geojson', 'data': initData.sourceData });
+            map.addLayer({ 'id': 'boundary-line', 'type': 'line', 'source': 'campus-boundary', 'paint': { 'line-color': '#007AFF', 'line-width': 4, 'line-blur': 2, 'line-opacity': 0.6 }});
+            map.addLayer({ 'id': 'boundary-fill', 'type': 'fill', 'source': 'campus-boundary', 'paint': { 'fill-color': '#007AFF', 'fill-opacity': 0.05 }}, 'boundary-line');
+        });
+
+        // --- 逻辑函数 ---
+
+        function handleSearch(query) {
+            const resultsContainer = document.getElementById('search-results');
+            if (!query.trim()) {
+                resultsContainer.classList.remove('show');
+                return;
+            }
+            let matches = [];
+            const keyword = query.toLowerCase();
+            Object.keys(CAMPUS_DATA).forEach(campusKey => {
+                const campusInfo = CAMPUS_DATA[campusKey];
+                campusInfo.locations.forEach(loc => {
+                    if (loc.name.toLowerCase().includes(keyword) || loc.desc.toLowerCase().includes(keyword)) {
+                        matches.push({ ...loc, campusKey, campusName: campusInfo.name, campusBadge: campusInfo.badge });
+                    }
+                });
+            });
+
+            if (matches.length > 0) {
+                resultsContainer.classList.add('show');
+                resultsContainer.innerHTML = matches.map(item => `
+                    <div class="result-item" onclick="selectSearchResult('${item.name}', '${item.campusKey}')">
+                        <div class="res-name">${item.name}</div>
+                        <span class="res-campus ${item.campusBadge}">${item.campusName}</span>
+                    </div>
+                `).join('');
+            } else {
+                resultsContainer.classList.add('show');
+                resultsContainer.innerHTML = `<div style="padding:15px; color:#666; text-align:center;">No results</div>`;
+            }
+        }
+
+        function selectSearchResult(locName, targetCampusKey) {
+            const targetLoc = CAMPUS_DATA[targetCampusKey].locations.find(l => l.name === locName);
+            document.getElementById('search-results').classList.remove('show');
+            document.getElementById('search-input').value = targetLoc.name;
+
+            if (activeCampus !== targetCampusKey) {
+                map.setMaxBounds(null);
+                activeCampus = targetCampusKey;
+                const geoInfo = calculateGeoInfo(RAW_BOUNDARIES[targetCampusKey]);
+                document.getElementById('search-input').placeholder = `Search ${CAMPUS_DATA[activeCampus].name}...`;
+        
+        // ── filter scroll 边缘检测（控制遮罩显示）──
+        (function() {
+            const wrap  = document.getElementById('filterWrap');
+            const scrl  = document.getElementById('filterScroll');
+            if (!wrap || !scrl) return;
+
+            function updateEdge() {
+                const atStart = scrl.scrollLeft <= 4;
+                const atEnd   = scrl.scrollLeft + scrl.clientWidth >= scrl.scrollWidth - 4;
+                wrap.classList.toggle('at-start', atStart);
+                wrap.classList.toggle('at-end',   atEnd);
+            }
+            scrl.addEventListener('scroll', updateEdge, { passive: true });
+            // 初始状态 & 内容变化后重算
+            updateEdge();
+            new ResizeObserver(updateEdge).observe(scrl);
+        })();
+
+        renderCards('all');
+
+        // ── 底部区域滚轮 → 横向滚动 ───────────────────────────
+        (function () {
+            const bottomArea = document.querySelector('.bottom-area');
+            if (!bottomArea) return;
+
+            bottomArea.addEventListener('wheel', function (e) {
+                // 找到鼠标下方最近的可横向滚动容器
+                const target = e.target.closest('#filterScroll, #cards-container') || e.currentTarget;
+                const scrollable = target.scrollWidth > target.clientWidth ? target
+                    : (document.getElementById('filterScroll').scrollWidth > document.getElementById('filterScroll').clientWidth
+                        ? document.getElementById('filterScroll')
+                        : document.getElementById('cards-container'));
+
+                if (!scrollable) return;
+
+                e.preventDefault();   // 阻止地图缩放
+                e.stopPropagation();
+
+                // deltaY → scrollLeft（兼容触控板的两轴输入）
+                const delta = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
+                scrollable.scrollBy({ left: delta * 1.2, behavior: 'auto' });
+            }, { passive: false });   // passive:false 才能 preventDefault
+        })();
+
+                
+                // 飞行特效
+                map.flyTo({ center: [targetLoc.lng, targetLoc.lat], zoom: 17.5, pitch: 60, speed: 1.8, curve: 1 });
+                map.getSource('campus-boundary').setData(geoInfo.sourceData);
+                map.once('moveend', () => map.setMaxBounds(geoInfo.bounds));
+                addMarker(targetLoc);
+            } else {
+                flyTo(targetLoc);
+            }
+        }
+
+        function switchCampus(campusKey, btn) {
+            if(activeCampus === campusKey && !btn) { toggleMenu(); return; }
+            activeCampus = campusKey;
+            
+            if(btn) {
+                document.querySelectorAll('.menu-item').forEach(el => el.classList.remove('active'));
+                btn.classList.add('active');
+            }
+            toggleMenu();
+            document.getElementById('search-input').value = "";
+            document.getElementById('search-input').placeholder = `Search ${CAMPUS_DATA[activeCampus].name}...`;
+
+            const geoInfo = calculateGeoInfo(RAW_BOUNDARIES[campusKey]);
+            map.setMaxBounds(null);
+            map.getSource('campus-boundary').setData(geoInfo.sourceData);
+            map.flyTo({ center: geoInfo.center, zoom: 16, bearing: -20, pitch: 50, speed: 1.6 });
+            map.once('moveend', () => {
+                map.setMaxBounds(geoInfo.bounds);
+        
+        // ── filter scroll 边缘检测（控制遮罩显示）──
+        (function() {
+            const wrap  = document.getElementById('filterWrap');
+            const scrl  = document.getElementById('filterScroll');
+            if (!wrap || !scrl) return;
+
+            function updateEdge() {
+                const atStart = scrl.scrollLeft <= 4;
+                const atEnd   = scrl.scrollLeft + scrl.clientWidth >= scrl.scrollWidth - 4;
+                wrap.classList.toggle('at-start', atStart);
+                wrap.classList.toggle('at-end',   atEnd);
+            }
+            scrl.addEventListener('scroll', updateEdge, { passive: true });
+            // 初始状态 & 内容变化后重算
+            updateEdge();
+            new ResizeObserver(updateEdge).observe(scrl);
+        })();
+
+        renderCards('all');
+            });
+    
+        // ── filter scroll 边缘检测（控制遮罩显示）──
+        (function() {
+            const wrap  = document.getElementById('filterWrap');
+            const scrl  = document.getElementById('filterScroll');
+            if (!wrap || !scrl) return;
+
+            function updateEdge() {
+                const atStart = scrl.scrollLeft <= 4;
+                const atEnd   = scrl.scrollLeft + scrl.clientWidth >= scrl.scrollWidth - 4;
+                wrap.classList.toggle('at-start', atStart);
+                wrap.classList.toggle('at-end',   atEnd);
+            }
+            scrl.addEventListener('scroll', updateEdge, { passive: true });
+            // 初始状态 & 内容变化后重算
+            updateEdge();
+            new ResizeObserver(updateEdge).observe(scrl);
+        })();
+
+        renderCards('all');
+        }
+
+        function renderCards(filterType) {
+            const container = document.getElementById('cards-container');
+            container.innerHTML = ''; 
+            const locations = CAMPUS_DATA[activeCampus].locations || [];
+            const filtered = filterType === 'all' ? locations : locations.filter(i => i.type === filterType);
+            
+            filtered.forEach(item => {
+                const card = document.createElement('div');
+                card.className = 'place-card liquid-glass';
+                card.onclick = () => flyTo(item);
+                card.innerHTML = `
+                    <div class="card-icon ${item.class}">${item.icon}</div>
+                    <div>
+                        <div class="res-name" style="margin-bottom:4px;">${item.name}</div>
+                        <div style="font-size:12px; color:#666;">${item.desc}</div>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        function filterCategory(type, element) {
+            document.querySelectorAll('.filter-chip').forEach(el => el.classList.remove('active'));
+            element.classList.add('active');
+            renderCards(type);
+        }
+
+        function flyTo(item) {
+            map.flyTo({ center: [item.lng, item.lat], zoom: 18, pitch: 65, bearing: 0, speed: 1.2 });
+            addMarker(item);
+        }
+
+        function addMarker(item) {
+            if (currentMarker) currentMarker.remove();
+            const el = document.createElement('div');
+            el.className = 'marker-pin'; // 使用新的 CSS 标记样式
+            currentMarker = new mapboxgl.Marker(el).setLngLat([item.lng, item.lat])
+                .setPopup(new mapboxgl.Popup({ offset: 25, closeButton: false }).setHTML(`<b>${item.name}</b>`))
+                .addTo(map);
+            currentMarker.togglePopup();
+        }
+
+        function toggleMenu() {
+            document.getElementById('campusMenu').classList.toggle('open');
+        }
+
+        map.on('click', () => {
+            document.getElementById('search-results').classList.remove('show');
+            document.getElementById('campusMenu').classList.remove('open');
+        });
+
+
+        // ══════════════════════════════════════════════
+        // 用户实时定位系统（自动启动）
+        // ══════════════════════════════════════════════
+
+        let userLocationMarker = null;  // 蓝点 Marker
+        let locateWatchId      = null;  // watchPosition ID
+        let lastKnownPos       = null;  // 最近一次有效坐标 {lng, lat}
+        let initialLocateDone  = false; // 首次定位是否完成
+
+        const CAMPUS_LABELS = {
+            'A': '老校区 A区', 'B': '老校区 B区', 'C': '老校区 C区',
+            'HUXI': '虎溪校区', 'LIANGJIANG': '两江校区'
+        };
+
+        /* ── 射线法：点是否在多边形内 ─────────────────── */
+        function pointInPolygon(lng, lat, polygon) {
+            let inside = false;
+            const n = polygon.length;
+            for (let i = 0, j = n - 1; i < n; j = i++) {
+                const [xi, yi] = polygon[i];
+                const [xj, yj] = polygon[j];
+                if (((yi > lat) !== (yj > lat)) &&
+                    (lng < (xj - xi) * (lat - yi) / (yj - yi) + xi))
+                    inside = !inside;
+            }
+            return inside;
+        }
+
+        /* ── 检测所在校区 ─────────────────────────────── */
+        function detectCampus(lng, lat) {
+            for (const key of Object.keys(RAW_BOUNDARIES))
+                if (pointInPolygon(lng, lat, RAW_BOUNDARIES[key])) return key;
+            return null;
+        }
+
+        /* ── 创建蓝点 DOM ──────────────────────────────── */
+        function createUserDotEl() {
+            const w = document.createElement('div');
+            w.className = 'user-dot-wrapper';
+            w.innerHTML = '<div class="user-dot-pulse"></div><div class="user-dot-ring"></div><div class="user-dot-core"></div>';
+            return w;
+        }
+
+        /* ── 放置 / 更新蓝点 ───────────────────────────── */
+        function placeUserDot(lng, lat) {
+            if (userLocationMarker) {
+                userLocationMarker.setLngLat([lng, lat]);
+            } else {
+                userLocationMarker = new mapboxgl.Marker({ element: createUserDotEl(), anchor: 'center' })
+                    .setLngLat([lng, lat]).addTo(map);
+            }
+        }
+
+        /* ── Toast ─────────────────────────────────────── */
+        let _toastTimer = null;
+        function showToast(icon, msg, duration = 3500) {
+            const toast = document.getElementById('mapToast');
+            document.getElementById('toastIcon').textContent = icon;
+            document.getElementById('toastMsg').textContent  = msg;
+            clearTimeout(_toastTimer);
+            toast.classList.remove('hide');
+            void toast.offsetHeight;
+            toast.classList.add('show');
+            _toastTimer = setTimeout(() => {
+                toast.classList.add('hide');
+                setTimeout(() => toast.classList.remove('show', 'hide'), 300);
+            }, duration);
+        }
+
+        /* ── 更新定位按钮状态 ──────────────────────────── */
+        function setLocateBtnState(state) {  // 'idle' | 'loading' | 'active'
+            const btn = document.getElementById('locateBtn');
+            if (!btn) return;
+            btn.classList.remove('locating', 'located');
+            if (state === 'loading') {
+                btn.classList.add('locating');
+                btn.innerHTML = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#007AFF" stroke-width="2.2" stroke-linecap="round"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>`;
+            } else if (state === 'active') {
+                btn.classList.add('located');
+                btn.innerHTML = `<svg width="22" height="22" viewBox="0 0 24 24" fill="#007AFF" stroke="#007AFF" stroke-width="1.5" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/><circle cx="12" cy="12" r="8" stroke-dasharray="4 2" opacity="0.5"/></svg>`;
+            } else {
+                btn.innerHTML = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/><circle cx="12" cy="12" r="8" stroke-dasharray="4 2" opacity="0.4"/></svg>`;
+            }
+        }
+
+        /* ── 位置更新回调（watchPosition 每次触发）──────── */
+        function onPositionUpdate(pos) {
+            const lng = pos.coords.longitude;
+            const lat = pos.coords.latitude;
+            const acc = pos.coords.accuracy;
+            const campus = detectCampus(lng, lat);
+
+            lastKnownPos = { lng, lat };
+
+            if (campus) {
+                placeUserDot(lng, lat);
+                setLocateBtnState('active');
+
+                if (!initialLocateDone) {
+                    // 首次定位：自动切换校区 + 飞行
+                    initialLocateDone = true;
+                    const accText = acc < 30 ? `精度 ${Math.round(acc)}m` : `精度约 ${Math.round(acc)}m`;
+
+                    if (activeCampus !== campus) {
+                        const menuItem = document.querySelector(`.menu-item[onclick*="'${campus}'"]`);
+                        switchCampus(campus, menuItem);
+                    }
+                    map.flyTo({ center: [lng, lat], zoom: 17.5, pitch: 55, speed: 1.4 });
+                    showToast('📍', `已定位至${CAMPUS_LABELS[campus]} · ${accText}`);
+                } else if (activeCampus !== campus) {
+                    // 后续更新：跨校区提示
+                    showToast('🚶', `您移动到了${CAMPUS_LABELS[campus]}`);
+                }
+            } else {
+                // 不在校区
+                if (userLocationMarker) {
+                    userLocationMarker.remove();
+                    userLocationMarker = null;
+                }
+                setLocateBtnState('idle');
+
+                if (!initialLocateDone) {
+                    initialLocateDone = true;
+                    showToast('📡', '您当前不在重庆大学任何校区内', 4500);
+                }
+            }
+        }
+
+        /* ── 定位错误回调 ──────────────────────────────── */
+        function onPositionError(err) {
+            setLocateBtnState('idle');
+            if (!initialLocateDone) {
+                initialLocateDone = true;
+                const msgs = {
+                    1: ['🔒', '定位权限被拒绝，请允许浏览器访问位置'],
+                    2: ['📡', '无法获取位置，请检查 GPS 或网络'],
+                    3: ['⏱️', '定位超时，请到信号更好的地方重试'],
+                };
+                const [icon, msg] = msgs[err.code] || ['❌', '定位失败，请稍后重试'];
+                showToast(icon, msg, 5000);
+            }
+        }
+
+        /* ── 启动持续定位（页面加载后自动调用）──────────── */
+        function startAutoLocation() {
+            if (!navigator.geolocation) {
+                showToast('❌', '您的浏览器不支持定位功能');
+                return;
+            }
+            setLocateBtnState('loading');
+
+            // 先用 getCurrentPosition 快速拿到首个位置
+            navigator.geolocation.getCurrentPosition(
+                (pos) => {
+                    onPositionUpdate(pos);
+                    // 首次成功后再开启持续监听
+                    if (locateWatchId !== null) navigator.geolocation.clearWatch(locateWatchId);
+                    locateWatchId = navigator.geolocation.watchPosition(
+                        onPositionUpdate,
+                        onPositionError,
+                        { enableHighAccuracy: true, maximumAge: 3000, timeout: 15000 }
+                    );
+                },
+                onPositionError,
+                { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+            );
+        }
+
+        /* ── 按钮点击：重新飞行到当前位置 ──────────────── */
+        function requestLocation() {
+            if (lastKnownPos && userLocationMarker) {
+                // 已有位置，直接飞过去
+                map.flyTo({ center: [lastKnownPos.lng, lastKnownPos.lat], zoom: 17.5, pitch: 55, speed: 1.4 });
+                const campus = detectCampus(lastKnownPos.lng, lastKnownPos.lat);
+                if (campus) showToast('📍', `您在${CAMPUS_LABELS[campus]}`);
+            } else {
+                // 重新发起定位
+                initialLocateDone = false;
+                startAutoLocation();
+            }
+        }
+
+
+        // ── filter scroll 边缘检测（控制遮罩显示）──
+        (function() {
+            const wrap  = document.getElementById('filterWrap');
+            const scrl  = document.getElementById('filterScroll');
+            if (!wrap || !scrl) return;
+
+            function updateEdge() {
+                const atStart = scrl.scrollLeft <= 4;
+                const atEnd   = scrl.scrollLeft + scrl.clientWidth >= scrl.scrollWidth - 4;
+                wrap.classList.toggle('at-start', atStart);
+                wrap.classList.toggle('at-end',   atEnd);
+            }
+            scrl.addEventListener('scroll', updateEdge, { passive: true });
+            // 初始状态 & 内容变化后重算
+            updateEdge();
+            new ResizeObserver(updateEdge).observe(scrl);
+        })();
+
+        renderCards('all');
+
+        // 地图加载完成后自动启动实时定位
+        if (map.loaded()) {
+            startAutoLocation();
+        } else {
+            map.once('load', startAutoLocation);
+        }
+
+        // ── 底部区域：滚轮转横向滚动 ─────────────────────────
+        (function () {
+            const LINE_PX = 24;   // deltaMode=1 时每行像素数
+            const PAGE_PX = 300;  // deltaMode=2 时每页像素数
+
+            function toPx(e) {
+                // 将 wheel event 的 delta 统一转成像素值
+                const raw = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
+                if (e.deltaMode === 1) return raw * LINE_PX;
+                if (e.deltaMode === 2) return raw * PAGE_PX;
+                return raw; // deltaMode=0，已是像素
+            }
+
+            function hookScroll(el) {
+                if (!el) return;
+                el.addEventListener('wheel', function (e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    el.scrollLeft += toPx(e);
+                }, { passive: false, capture: false });
+            }
+
+            // map 加载后再挂钩（确保 Mapbox 已注册好自己的监听器）
+            function init() {
+                hookScroll(document.getElementById('filterScroll'));
+                hookScroll(document.getElementById('cards-container'));
+
+                // 鼠标进入底部区域时禁用地图缩放，离开时恢复
+                const bottom = document.querySelector('.bottom-area');
+                if (bottom) {
+                    bottom.addEventListener('mouseenter', () => map.scrollZoom.disable());
+                    bottom.addEventListener('mouseleave', () => map.scrollZoom.enable());
+                }
+            }
+
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', init);
+            } else {
+                init();
+            }
+        })();
+
+    </script>
+</body>
+</html>
