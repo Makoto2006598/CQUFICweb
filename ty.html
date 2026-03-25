@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>体验评价 - 重庆大学新生服务融合中心平台</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="shared.css">
+    <style>
+        /* CSS 变量已移入 shared.css */
+        
+        
+        body { font-family: var(--font-family); background-color: var(--background-color); color: var(--text-primary); line-height: 1.5; min-height: 100vh; }
+        
+        header { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); width: 90%; height: var(--header-height);
+            background: rgba(255,255,255,0.25); backdrop-filter: blur(20px); border-radius: var(--border-radius-xl); 
+            box-shadow: var(--shadow-md); z-index: 1000; transition: var(--transition-normal); border: 1px solid rgba(255,255,255,0.3); }
+        header.scrolled { background: rgba(255,255,255,0.35); box-shadow: var(--shadow-lg); }
+        .nav-container { display: flex; justify-content: space-between; align-items: center; height: 100%; padding: 0 var(--spacing-md); }
+        .logo { display: flex; align-items: center; gap: var(--spacing-sm); text-decoration: none; }
+        .logo-icon { font-family: var(--font-family); font-size: 1.8rem; font-weight: var(--font-weight-bold); letter-spacing: 4px;
+            background: linear-gradient(135deg, #c62828 0%, #ff7043 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .logo-text { display: flex; flex-direction: column; line-height: 1.2; }
+        .logo-main { font-size: 1.1rem; font-weight: var(--font-weight-semibold); color: var(--text-primary); }
+        .logo-sub { font-size: 0.7rem; color: var(--text-secondary); }
+        .nav-links { display: flex; list-style: none; gap: var(--spacing-sm); }
+        .nav-link { text-decoration: none; color: var(--text-secondary); font-weight: var(--font-weight-medium); font-size: 0.9rem;
+            transition: var(--transition-normal); padding: var(--spacing-sm) var(--spacing-md); background: rgba(255,255,255,0.6); 
+            backdrop-filter: blur(15px); border: 1px solid rgba(255,255,255,0.4); border-radius: var(--border-radius-lg); 
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1); cursor: pointer; }
+        .nav-link:hover { color: var(--cqu-blue); transform: translateY(-2px) scale(1.05); background: rgba(255,255,255,0.7); }
+        .content-section { padding: calc(var(--spacing-xxl) + var(--header-height)) 0 var(--spacing-xxl); min-height: 100vh; display: flex; align-items: center; }
+        .section-title { font-size: clamp(2rem, 4vw, 3rem); font-weight: var(--font-weight-semibold); margin-bottom: var(--spacing-lg); text-align: center; }
+        .section-subtitle { font-size: 1.2rem; color: var(--text-secondary); max-width: 600px; margin: 0 auto var(--spacing-xl); text-align: center; }
+        .rating-form-container { width: 100%; max-width: 800px; margin: 0 auto; background: rgba(255,255,255,0.7); backdrop-filter: blur(15px); border-radius: var(--border-radius-lg); padding: var(--spacing-xl); box-shadow: var(--shadow-lg); border: 1px solid rgba(255,255,255,0.4); }
+        .form-group { margin-bottom: var(--spacing-md); }
+        .form-label { display: block; margin-bottom: var(--spacing-xs); font-weight: var(--font-weight-medium); color: var(--text-primary); }
+        .form-input, .form-textarea, .form-select { width: 100%; padding: var(--spacing-sm); background: rgba(255,255,255,0.8); border: 1px solid rgba(255,255,255,0.5); border-radius: var(--border-radius-md); font-family: var(--font-family); font-size: 1rem; transition: var(--transition-normal); box-shadow: var(--shadow-sm); }
+        .form-input:focus, .form-textarea:focus, .form-select:focus { outline: none; border-color: var(--cqu-blue); box-shadow: 0 0 0 2px rgba(30,79,161,0.2); }
+        .form-textarea { min-height: 120px; resize: vertical; }
+        .form-submit { display: block; width: 100%; padding: var(--spacing-md); background: linear-gradient(135deg, var(--cqu-blue) 0%, #3a6dc1 100%); color: white; border: none; border-radius: var(--border-radius-md); font-weight: var(--font-weight-semibold); font-size: 1.1rem; cursor: pointer; transition: var(--transition-normal); box-shadow: var(--shadow-md); margin-top: var(--spacing-lg); }
+        .form-submit:hover { transform: translateY(-3px); box-shadow: var(--shadow-lg); }
+        .rating-container { display: flex; justify-content: center; margin: var(--spacing-md) 0; }
+        .rating-stars { display: flex; gap: var(--spacing-xs); direction: rtl; }
+        .rating-star { font-size: 2.5rem; color: #ddd; cursor: pointer; transition: var(--transition-normal); }
+        .rating-star:hover, .rating-star:hover ~ .rating-star { color: #ffc107; }
+        .rating-stars input[type="radio"] { display: none; }
+        .rating-stars input[type="radio"]:checked ~ .rating-star { color: #ffc107; }
+        .reviews-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); gap: var(--spacing-lg); margin-top: var(--spacing-xl); }
+        .review-card { background: rgba(255,255,255,0.7); border-radius: var(--border-radius-lg); padding: var(--spacing-lg); box-shadow: var(--shadow-sm); transition: var(--transition-normal); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.3); overflow: hidden; position: relative; }
+        .review-card:hover { transform: translateY(-10px); box-shadow: var(--shadow-lg); background: rgba(255,255,255,0.9); }
+        .review-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: var(--spacing-sm); }
+        .reviewer-info { display: flex; align-items: center; gap: var(--spacing-sm); }
+        .reviewer-avatar { width: 50px; height: 50px; border-radius: 50%; background: linear-gradient(135deg, var(--cqu-blue) 0%, var(--cqu-orange) 100%); display: flex; align-items: center; justify-content: center; color: white; font-weight: var(--font-weight-bold); font-size: 1.2rem; }
+        .reviewer-details { display: flex; flex-direction: column; }
+        .reviewer-name { font-weight: var(--font-weight-semibold); color: var(--text-primary); }
+        .review-date { font-size: 0.85rem; color: var(--text-secondary); }
+        .review-rating { display: flex; gap: 4px; }
+        .review-star { color: #ffc107; font-size: 1.2rem; }
+        .review-content { color: var(--text-secondary); margin-bottom: var(--spacing-sm); line-height: 1.6; }
+        .review-tags { display: flex; flex-wrap: wrap; gap: var(--spacing-xs); }
+        .review-tag { padding: 4px 10px; background: rgba(30,79,161,0.1); border-radius: 20px; font-size: 0.8rem; color: var(--cqu-blue); }
+        .stats-container { display: flex; justify-content: space-around; flex-wrap: wrap; gap: var(--spacing-md); margin: var(--spacing-xl) 0; }
+        .stat-card { background: rgba(255,255,255,0.7); backdrop-filter: blur(10px); border-radius: var(--border-radius-lg); padding: var(--spacing-lg); text-align: center; box-shadow: var(--shadow-sm); border: 1px solid rgba(255,255,255,0.3); flex: 1; min-width: 200px; transition: var(--transition-normal); }
+        .stat-card:hover { transform: translateY(-5px); box-shadow: var(--shadow-md); }
+        .stat-value { font-size: 2.5rem; font-weight: var(--font-weight-bold); color: var(--cqu-blue); margin-bottom: var(--spacing-xs); }
+        .stat-label { color: var(--text-secondary); font-size: 1rem; }
+        .features-section { padding: var(--spacing-xxl) 0; min-height: 100vh; display: flex; align-items: center; }
+        .features-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: var(--spacing-lg); margin-top: var(--spacing-xl); }
+        .feature-card { background: rgba(255,255,255,0.7); border-radius: var(--border-radius-lg); padding: var(--spacing-lg); box-shadow: var(--shadow-sm); transition: var(--transition-normal); cursor: pointer; display: flex; flex-direction: column; align-items: center; text-align: center; backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.3); text-decoration: none; color: inherit; overflow: hidden; }
+        .feature-card:hover { transform: translateY(-10px); box-shadow: var(--shadow-lg); background: rgba(255,255,255,0.9); }
+        .feature-icon { width: 80px; height: 80px; background: linear-gradient(135deg, rgba(30,79,161,0.7) 0%, rgba(245,124,0,0.7) 100%); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.4); box-shadow: 0 8px 20px rgba(0,0,0,0.15); border-radius: 20px; display: flex; align-items: center; justify-content: center; margin-bottom: var(--spacing-md); color: white; font-size: 2rem; transition: var(--transition-normal); }
+        .feature-card:hover .feature-icon { transform: scale(1.1) rotate(5deg); }
+        .feature-title { font-size: 1.5rem; font-weight: var(--font-weight-semibold); margin-bottom: var(--spacing-sm); color: var(--cqu-blue); }
+        .feature-description { color: var(--text-secondary); font-size: 1rem; }
+        @media (max-width: 768px) {
+            .nav-links { display: none; }
+            .features-grid, .reviews-grid { grid-template-columns: 1fr; }
+            header { width: 95%; top: 10px; }
+            .rating-form-container { padding: var(--spacing-md); }
+            .stats-container { flex-direction: column; }
+        }
+    </style>
+</head>
+<body>
+        <!-- Header 由 shared.js 自动注入 -->
+
+    <section class="content-section">
+        <div class="container">
+            <h2 class="section-title">体验评价</h2>
+            <p class="section-subtitle">分享您的使用体验，帮助我们改进平台服务</p>
+            
+            <div class="stats-container">
+                <div class="stat-card">
+                    <div class="stat-value">4.7</div>
+                    <div class="stat-label">综合评分</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">128</div>
+                    <div class="stat-label">评价总数</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">92%</div>
+                    <div class="stat-label">推荐率</div>
+                </div>
+            </div>
+            
+            <div class="rating-form-container">
+                <form id="ratingForm">
+                    <div class="form-group">
+                        <label for="name" class="form-label">您的姓名</label>
+                        <input type="text" id="name" class="form-input" placeholder="请输入您的姓名">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="category" class="form-label">评价模块</label>
+                        <select id="category" class="form-select">
+                            <option value="">请选择评价的模块</option>
+                            <option value="admission">入学流程</option>
+                            <option value="dormitory">宿舍信息</option>
+                            <option value="military">军训贴士</option>
+                            <option value="freshman">新生琐事</option>
+                            <option value="overall">整体体验</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">评分</label>
+                        <div class="rating-container">
+                            <div class="rating-stars">
+                                <input type="radio" id="star5" name="rating" value="5">
+                                <label for="star5" class="rating-star"><i class="fas fa-star"></i></label>
+                                <input type="radio" id="star4" name="rating" value="4">
+                                <label for="star4" class="rating-star"><i class="fas fa-star"></i></label>
+                                <input type="radio" id="star3" name="rating" value="3">
+                                <label for="star3" class="rating-star"><i class="fas fa-star"></i></label>
+                                <input type="radio" id="star2" name="rating" value="2">
+                                <label for="star2" class="rating-star"><i class="fas fa-star"></i></label>
+                                <input type="radio" id="star1" name="rating" value="1">
+                                <label for="star1" class="rating-star"><i class="fas fa-star"></i></label>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="review" class="form-label">评价内容</label>
+                        <textarea id="review" class="form-textarea" placeholder="请详细描述您的使用体验..."></textarea>
+                    </div>
+                    
+                    <button type="submit" class="form-submit">提交评价</button>
+                </form>
+            </div>
+        </div>
+    </section>
+
+    <section class="content-section">
+        <div class="container">
+            <h2 class="section-title">用户评价</h2>
+            <p class="section-subtitle">看看其他同学对平台的评价</p>
+            
+            <div class="reviews-grid">
+                <div class="review-card">
+                    <div class="review-header">
+                        <div class="reviewer-info">
+                            <div class="reviewer-avatar">张</div>
+                            <div class="reviewer-details">
+                                <div class="reviewer-name">张同学</div>
+                                <div class="review-date">2023-09-15</div>
+                            </div>
+                        </div>
+                        <div class="review-rating">
+                            <span class="review-star"><i class="fas fa-star"></i></span>
+                            <span class="review-star"><i class="fas fa-star"></i></span>
+                            <span class="review-star"><i class="fas fa-star"></i></span>
+                            <span class="review-star"><i class="fas fa-star"></i></span>
+                            <span class="review-star"><i class="fas fa-star"></i></span>
+                        </div>
+                    </div>
+                    <p class="review-content">这个平台对我帮助太大了！入学流程一目了然，特别是宿舍信息部分，让我提前了解了住宿环境。强烈推荐给新生！</p>
+                    <div class="review-tags">
+                        <span class="review-tag">入学流程</span>
+                        <span class="review-tag">宿舍信息</span>
+                    </div>
+                </div>
+                
+                <div class="review-card">
+                    <div class="review-header">
+                        <div class="reviewer-info">
+                            <div class="reviewer-avatar">李</div>
+                            <div class="reviewer-details">
+                                <div class="reviewer-name">李同学</div>
+                                <div class="review-date">2023-09-10</div>
+                            </div>
+                        </div>
+                        <div class="review-rating">
+                            <span class="review-star"><i class="fas fa-star"></i></span>
+                            <span class="review-star"><i class="fas fa-star"></i></span>
+                            <span class="review-star"><i class="fas fa-star"></i></span>
+                            <span class="review-star"><i class="fas fa-star"></i></span>
+                            <span class="review-star"><i class="far fa-star"></i></span>
+                        </div>
+                    </div>
+                    <p class="review-content">军训贴士很实用，但希望可以增加更多关于军训期间饮食和作息的建议。整体来说是个不错的平台！</p>
+                    <div class="review-tags">
+                        <span class="review-tag">军训贴士</span>
+                        <span class="review-tag">建议</span>
+                    </div>
+                </div>
+                
+                <div class="review-card">
+                    <div class="review-header">
+                        <div class="reviewer-info">
+                            <div class="reviewer-avatar">王</div>
+                            <div class="reviewer-details">
+                                <div class="reviewer-name">王同学</div>
+                                <div class="review-date">2023-09-05</div>
+                            </div>
+                        </div>
+                        <div class="review-rating">
+                            <span class="review-star"><i class="fas fa-star"></i></span>
+                            <span class="review-star"><i class="fas fa-star"></i></span>
+                            <span class="review-star"><i class="fas fa-star"></i></span>
+                            <span class="review-star"><i class="fas fa-star"></i></span>
+                            <span class="review-star"><i class="fas fa-star-half-alt"></i></span>
+                        </div>
+                    </div>
+                    <p class="review-content">新生琐事部分帮我避免了很多麻烦，特别是关于校园卡和图书馆使用的说明。界面设计也很美观，使用体验很好。</p>
+                    <div class="review-tags">
+                        <span class="review-tag">新生琐事</span>
+                        <span class="review-tag">界面设计</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="features-section">
+        <div class="container">
+            <h2 class="section-title">其他服务</h2>
+            <p class="section-subtitle">平台提供的其他实用功能</p>
+            
+            <div class="features-grid" id="featuresGrid">
+                <a href="admission-process.html" class="feature-card">
+                    <div class="feature-icon"><i class="fas fa-list-alt"></i></div>
+                    <h3 class="feature-title">入学流程</h3>
+                    <p class="feature-description">一站式了解所有入学流程</p>
+                </a>
+                <a href="dormitory-overview.html" class="feature-card">
+                    <div class="feature-icon"><i class="fas fa-home"></i></div>
+                    <h3 class="feature-title">宿舍一览</h3>
+                    <p class="feature-description">查看各类宿舍环境与设施</p>
+                </a>
+                <a href="military-tips.html" class="feature-card">
+                    <div class="feature-icon"><i class="fas fa-running"></i></div>
+                    <h3 class="feature-title">军训贴士</h3>
+                    <p class="feature-description">军训准备与注意事项</p>
+                </a>
+                <a href="freshman-trivia.html" class="feature-card">
+                    <div class="feature-icon"><i class="fas fa-clipboard-list"></i></div>
+                    <h3 class="feature-title">新生琐事</h3>
+                    <p class="feature-description">入学后需要办理的各项事务</p>
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <script src="shared.js"></script>
+    <script>
+        window.addEventListener('scroll', () => {
+            const header = document.getElementById('header');
+            header.classList.toggle('scrolled', window.scrollY > 50);
+            
+            const featureCards = document.querySelectorAll('.feature-card, .review-card, .stat-card');
+            featureCards.forEach((card, index) => {
+                const scrollY = window.scrollY;
+                const cardTop = card.getBoundingClientRect().top + scrollY;
+                const windowHeight = window.innerHeight;
+                
+                if (scrollY + windowHeight > cardTop + 100) {
+                    const bounceIntensity = Math.min((scrollY + windowHeight - cardTop) * 0.001, 1);
+                    const cardBounceTranslate = bounceIntensity * 10;
+                    card.style.transform = `translateY(${cardBounceTranslate}px)`;
+                }
+            });
+        });
+
+        document.getElementById('ratingForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const name = document.getElementById('name').value;
+            const category = document.getElementById('category').value;
+            const rating = document.querySelector('input[name="rating"]:checked');
+            const review = document.getElementById('review').value;
+            
+            if (!name || !category || !rating || !review) {
+                alert('请填写所有必填字段！');
+                return;
+            }
+            
+            alert('感谢您的评价！我们已收到您的反馈。');
+            this.reset();
+        });
+
+        document.querySelectorAll('.rating-star').forEach(star => {
+            star.addEventListener('click', function() {
+                const ratingValue = this.previousElementSibling.value;
+                console.log(`用户评分: ${ratingValue}星`);
+            });
+        });
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const formContainer = document.querySelector('.rating-form-container');
+            const statCards = document.querySelectorAll('.stat-card');
+            const reviewCards = document.querySelectorAll('.review-card');
+            
+            formContainer.style.opacity = '0';
+            formContainer.style.transform = 'translateY(20px)';
+            
+            setTimeout(() => {
+                formContainer.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
+                formContainer.style.opacity = '1';
+                formContainer.style.transform = 'translateY(0)';
+            }, 300);
+            
+            statCards.forEach((card, index) => {
+                card.style.opacity = '0';
+                card.style.transform = 'translateY(20px)';
+                
+                setTimeout(() => {
+                    card.style.transition = `opacity 0.6s ease ${index * 0.1}s, transform 0.6s ease ${index * 0.1}s`;
+                    card.style.opacity = '1';
+                    card.style.transform = 'translateY(0)';
+                }, 500 + index * 100);
+            });
+            
+            reviewCards.forEach((card, index) => {
+                card.style.opacity = '0';
+                card.style.transform = 'translateY(20px)';
+                
+                setTimeout(() => {
+                    card.style.transition = `opacity 0.6s ease ${index * 0.1}s, transform 0.6s ease ${index * 0.1}s`;
+                    card.style.opacity = '1';
+                    card.style.transform = 'translateY(0)';
+                }, 800 + index * 100);
+            });
+        });
+    </script>
+</body>
+</html>

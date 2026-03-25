@@ -1,0 +1,363 @@
+/*
+ * CQU FIC — Liquid Glass Material System v2
+ * ============================================
+ * 核心原理（参考 Apple visionOS / iOS 26）：
+ *
+ *  1. 极低填充透明度（~10%）— 让 backdrop-filter 成为颜色主体，而非白色遮罩
+ *  2. saturate(260%) — 把背景色"吸"进玻璃，这是区别于普通 frosted glass 的关键
+ *  3. brightness(1.08) — 整体稍亮，模拟玻璃对光的散射
+ *  4. 强顶部 inset 高光（0.82 opacity）— 模拟玻璃上边缘折射光，是质感最强的一层
+ *  5. 底部暗边（0.08 opacity）— 模拟玻璃厚度产生的阴影
+ *  6. 对角 specular 渐变（多重 background）— 模拟左上光源照射玻璃表面
+ *  7. 0.5px 细边框 — 比 1px 更接近真实玻璃截面
+ */
+
+/* ═══════════════════════════════════════════════════
+   TOKEN 系统
+═══════════════════════════════════════════════════ */
+:root {
+  /* backdrop-filter 三档 */
+  --lg-filter-sm:  blur(28px) saturate(240%) brightness(1.06);
+  --lg-filter-md:  blur(48px) saturate(260%) brightness(1.08);
+  --lg-filter-lg:  blur(64px) saturate(280%) brightness(1.10);
+
+  /* 填充色：极低不透明度 */
+  --lg-fill:       rgba(255, 255, 255, 0.10);
+  --lg-fill-hover: rgba(255, 255, 255, 0.18);
+
+  /* 对角 specular（左上光源）*/
+  --lg-spec: linear-gradient(
+    148deg,
+    rgba(255,255,255,0.36)  0%,
+    rgba(255,255,255,0.10) 32%,
+    rgba(255,255,255,0.00) 58%
+  );
+  --lg-spec-hover: linear-gradient(
+    148deg,
+    rgba(255,255,255,0.46)  0%,
+    rgba(255,255,255,0.14) 32%,
+    rgba(255,255,255,0.00) 58%
+  );
+
+  /* 边框 */
+  --lg-border:     0.5px solid rgba(255, 255, 255, 0.28);
+
+  /*
+   * box-shadow 分层（从外到里）：
+   *  ① 外描边      — 整体轮廓，比 border 更柔
+   *  ② 柔和投影    — 提升层次感
+   *  ③ inset 顶高光 — 玻璃上边折射，这是质感核心
+   *  ④ inset 底暗边 — 模拟厚度
+   */
+  --lg-shadow:
+    0 0 0 0.5px rgba(255, 255, 255, 0.22),
+    0 4px 24px   rgba(0,   0,   0, 0.10),
+    0 1px 4px    rgba(0,   0,   0, 0.06),
+    inset 0  1.5px 0 rgba(255, 255, 255, 0.82),
+    inset 0 -1px   0 rgba(0,   0,   0, 0.08);
+
+  --lg-shadow-hover:
+    0 0 0 0.5px rgba(255, 255, 255, 0.28),
+    0 8px 36px   rgba(0,   0,   0, 0.13),
+    0 2px 8px    rgba(0,   0,   0, 0.08),
+    inset 0  1.5px 0 rgba(255, 255, 255, 0.90),
+    inset 0 -1px   0 rgba(0,   0,   0, 0.10);
+
+  /* 蓝色按钮版本 */
+  --lg-blue-fill:
+    linear-gradient(148deg, rgba(255,255,255,0.28) 0%, rgba(255,255,255,0.00) 55%),
+    linear-gradient(160deg, rgba(30,79,161,0.55), rgba(21,58,122,0.45));
+
+  --lg-blue-fill-hover:
+    linear-gradient(148deg, rgba(255,255,255,0.36) 0%, rgba(255,255,255,0.00) 55%),
+    linear-gradient(160deg, rgba(30,79,161,0.72), rgba(21,58,122,0.62));
+
+  --lg-blue-shadow:
+    0 0 0 0.5px rgba(255, 255, 255, 0.18),
+    0 4px 20px   rgba(30, 79, 161, 0.28),
+    0 1px 4px    rgba(0,   0,   0, 0.10),
+    inset 0  1.5px 0 rgba(255, 255, 255, 0.60),
+    inset 0 -1px   0 rgba(0,   0,   0, 0.18);
+
+  --lg-blue-shadow-hover:
+    0 0 0 0.5px rgba(255, 255, 255, 0.22),
+    0 8px 32px   rgba(30, 79, 161, 0.38),
+    0 2px 8px    rgba(0,   0,   0, 0.12),
+    inset 0  1.5px 0 rgba(255, 255, 255, 0.70),
+    inset 0 -1px   0 rgba(0,   0,   0, 0.20);
+}
+
+
+/* ═══════════════════════════════════════════════════
+   HEADER / 导航栏
+═══════════════════════════════════════════════════ */
+header {
+  background:              var(--lg-spec), var(--lg-fill) !important;
+  backdrop-filter:         var(--lg-filter-md) !important;
+  -webkit-backdrop-filter: var(--lg-filter-md) !important;
+  border:                  var(--lg-border) !important;
+  box-shadow:              var(--lg-shadow) !important;
+}
+header.scrolled {
+  background:   var(--lg-spec), rgba(255,255,255,0.16) !important;
+  box-shadow:   var(--lg-shadow-hover) !important;
+}
+
+
+/* ═══════════════════════════════════════════════════
+   NAV PILLS
+═══════════════════════════════════════════════════ */
+.nav-link {
+  background:              var(--lg-spec), rgba(255,255,255,0.08) !important;
+  backdrop-filter:         var(--lg-filter-sm) !important;
+  -webkit-backdrop-filter: var(--lg-filter-sm) !important;
+  border:                  var(--lg-border) !important;
+  box-shadow:
+    0 0 0 0.5px rgba(255,255,255,0.20),
+    0 2px 10px   rgba(0,0,0,0.07),
+    inset 0  1.5px 0 rgba(255,255,255,0.80),
+    inset 0 -0.5px 0 rgba(0,0,0,0.07) !important;
+}
+.nav-link:hover,
+.dropdown:hover .nav-link {
+  background:  var(--lg-spec-hover), rgba(255,255,255,0.16) !important;
+  box-shadow:
+    0 0 0 0.5px rgba(255,255,255,0.26),
+    0 4px 18px   rgba(0,0,0,0.10),
+    inset 0  1.5px 0 rgba(255,255,255,0.90),
+    inset 0 -0.5px 0 rgba(0,0,0,0.09) !important;
+}
+
+
+/* ═══════════════════════════════════════════════════
+   DROPDOWN
+═══════════════════════════════════════════════════ */
+.dropdown-content {
+  background:              var(--lg-spec), rgba(255,255,255,0.12) !important;
+  backdrop-filter:         var(--lg-filter-md) !important;
+  -webkit-backdrop-filter: var(--lg-filter-md) !important;
+  border:                  var(--lg-border) !important;
+  box-shadow:              var(--lg-shadow) !important;
+}
+.dropdown-item:hover {
+  background: rgba(255,255,255,0.20) !important;
+}
+
+
+/* ═══════════════════════════════════════════════════
+   FEATURE CARDS
+═══════════════════════════════════════════════════ */
+.feature-card {
+  background:              var(--lg-spec), var(--lg-fill) !important;
+  backdrop-filter:         var(--lg-filter-md) !important;
+  -webkit-backdrop-filter: var(--lg-filter-md) !important;
+  border:                  var(--lg-border) !important;
+  box-shadow:              var(--lg-shadow) !important;
+}
+.feature-card:hover {
+  background:  var(--lg-spec-hover), var(--lg-fill-hover) !important;
+  box-shadow:  var(--lg-shadow-hover) !important;
+}
+
+
+/* ═══════════════════════════════════════════════════
+   HERO CTA BUTTON
+═══════════════════════════════════════════════════ */
+.hero-cta {
+  background:              var(--lg-blue-fill) !important;
+  backdrop-filter:         var(--lg-filter-sm) !important;
+  -webkit-backdrop-filter: var(--lg-filter-sm) !important;
+  border:                  0.5px solid rgba(255,255,255,0.26) !important;
+  box-shadow:              var(--lg-blue-shadow) !important;
+}
+.hero-cta:hover {
+  background:  var(--lg-blue-fill-hover) !important;
+  box-shadow:  var(--lg-blue-shadow-hover) !important;
+}
+
+
+/* ═══════════════════════════════════════════════════
+   FEEDBACK / FORUM / LOGIN 容器
+═══════════════════════════════════════════════════ */
+.feedback-form,
+.forum-container,
+.login-container,
+.post-form {
+  background:              var(--lg-spec), var(--lg-fill) !important;
+  backdrop-filter:         var(--lg-filter-lg) !important;
+  -webkit-backdrop-filter: var(--lg-filter-lg) !important;
+  border:                  var(--lg-border) !important;
+  box-shadow:              var(--lg-shadow) !important;
+}
+.feedback-form::before { display: none !important; }
+
+
+/* ═══════════════════════════════════════════════════
+   表单控件 — 内凹玻璃
+═══════════════════════════════════════════════════ */
+.form-input,
+.form-select,
+.form-textarea {
+  background:              rgba(255,255,255,0.38) !important;
+  backdrop-filter:         blur(16px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(16px) saturate(180%) !important;
+  border:                  0.5px solid rgba(255,255,255,0.36) !important;
+  box-shadow:
+    inset 0  1px  4px rgba(0,0,0,0.05),
+    inset 0  1px  0   rgba(255,255,255,0.50),
+          0  1px  0   rgba(255,255,255,0.60) !important;
+  transition: background 0.2s, box-shadow 0.2s, border-color 0.2s !important;
+}
+.form-input:focus,
+.form-select:focus,
+.form-textarea:focus {
+  background:    rgba(255,255,255,0.58) !important;
+  border-color:  rgba(30,79,161,0.30) !important;
+  box-shadow:
+    0 0 0 3px  rgba(30,79,161,0.10),
+    inset 0 1px 4px rgba(0,0,0,0.04),
+    inset 0 1px 0   rgba(255,255,255,0.55) !important;
+  transform: none !important;
+}
+
+
+/* ═══════════════════════════════════════════════════
+   BUTTONS
+═══════════════════════════════════════════════════ */
+.submit-btn,
+.forum-btn,
+.login-btn,
+.action-btn,
+.popup-btn {
+  background:              var(--lg-blue-fill) !important;
+  backdrop-filter:         var(--lg-filter-sm) !important;
+  -webkit-backdrop-filter: var(--lg-filter-sm) !important;
+  border:                  0.5px solid rgba(255,255,255,0.24) !important;
+  box-shadow:              var(--lg-blue-shadow) !important;
+}
+.submit-btn:hover,
+.forum-btn:hover,
+.login-btn:hover,
+.action-btn:hover,
+.popup-btn:hover {
+  background:  var(--lg-blue-fill-hover) !important;
+  box-shadow:  var(--lg-blue-shadow-hover) !important;
+}
+
+
+/* ═══════════════════════════════════════════════════
+   帖子卡片
+═══════════════════════════════════════════════════ */
+.post {
+  background:              var(--lg-spec), var(--lg-fill) !important;
+  backdrop-filter:         var(--lg-filter-sm) !important;
+  -webkit-backdrop-filter: var(--lg-filter-sm) !important;
+  border:                  var(--lg-border) !important;
+  box-shadow:              var(--lg-shadow) !important;
+}
+.post:hover {
+  background:  var(--lg-spec-hover), var(--lg-fill-hover) !important;
+  box-shadow:  var(--lg-shadow-hover) !important;
+}
+
+
+/* ═══════════════════════════════════════════════════
+   地图页 .liquid-glass 通用类
+═══════════════════════════════════════════════════ */
+.liquid-glass {
+  background:              var(--lg-spec), var(--lg-fill) !important;
+  backdrop-filter:         var(--lg-filter-md) !important;
+  -webkit-backdrop-filter: var(--lg-filter-md) !important;
+  border:                  var(--lg-border) !important;
+  box-shadow:              var(--lg-shadow) !important;
+}
+.search-box.liquid-glass:focus-within {
+  background:  var(--lg-spec-hover), rgba(255,255,255,0.20) !important;
+  box-shadow:  var(--lg-shadow-hover) !important;
+}
+
+
+/* ═══════════════════════════════════════════════════
+   Filter Chips
+═══════════════════════════════════════════════════ */
+.filter-chip {
+  background:              var(--lg-spec), rgba(255,255,255,0.08) !important;
+  backdrop-filter:         var(--lg-filter-sm) !important;
+  -webkit-backdrop-filter: var(--lg-filter-sm) !important;
+  border:                  var(--lg-border) !important;
+  box-shadow:
+    0 0 0 0.5px rgba(255,255,255,0.18),
+    0 2px 8px rgba(0,0,0,0.06),
+    inset 0 1.5px 0 rgba(255,255,255,0.78) !important;
+  color: rgba(0,0,0,0.65) !important;
+}
+.filter-chip.active {
+  background:
+    linear-gradient(148deg, rgba(255,255,255,0.30) 0%, rgba(255,255,255,0.00) 55%),
+    rgba(30,79,161,0.28) !important;
+  border:       0.5px solid rgba(30,79,161,0.25) !important;
+  box-shadow:
+    0 0 0 0.5px rgba(30,79,161,0.18),
+    0 2px 10px rgba(30,79,161,0.20),
+    inset 0 1.5px 0 rgba(255,255,255,0.70) !important;
+  color: rgba(30,79,161,0.95) !important;
+}
+
+
+/* ═══════════════════════════════════════════════════
+   Continued 页气泡
+═══════════════════════════════════════════════════ */
+.liquid-circle,
+.center-content {
+  background:              var(--lg-spec), var(--lg-fill) !important;
+  backdrop-filter:         var(--lg-filter-md) !important;
+  -webkit-backdrop-filter: var(--lg-filter-md) !important;
+  border:                  var(--lg-border) !important;
+  box-shadow:              var(--lg-shadow) !important;
+}
+.progress-container {
+  background:   rgba(255,255,255,0.14) !important;
+  border:       var(--lg-border) !important;
+  box-shadow:   inset 0 1px 3px rgba(0,0,0,0.06) !important;
+}
+.bubble,
+.special-bubble {
+  background:              var(--lg-spec), var(--lg-fill) !important;
+  backdrop-filter:         var(--lg-filter-sm) !important;
+  -webkit-backdrop-filter: var(--lg-filter-sm) !important;
+  border:                  var(--lg-border) !important;
+  box-shadow:              var(--lg-shadow) !important;
+}
+
+
+/* ═══════════════════════════════════════════════════
+   Timeline popup
+═══════════════════════════════════════════════════ */
+.timeline-popup {
+  background:              var(--lg-spec), rgba(255,255,255,0.12) !important;
+  backdrop-filter:         var(--lg-filter-md) !important;
+  -webkit-backdrop-filter: var(--lg-filter-md) !important;
+  border:                  var(--lg-border) !important;
+  box-shadow:              var(--lg-shadow) !important;
+}
+
+
+/* ═══════════════════════════════════════════════════
+   Easter egg 弹窗
+═══════════════════════════════════════════════════ */
+.easter-egg-popup,
+[class*="easter"] {
+  background:              var(--lg-spec), rgba(255,255,255,0.14) !important;
+  backdrop-filter:         var(--lg-filter-lg) !important;
+  -webkit-backdrop-filter: var(--lg-filter-lg) !important;
+  border:                  var(--lg-border) !important;
+  box-shadow:              var(--lg-shadow-hover) !important;
+}
+
+
+/* ═══════════════════════════════════════════════════
+   覆盖 section 内联白色背景
+═══════════════════════════════════════════════════ */
+section[style*="background"] {
+  background: transparent !important;
+}

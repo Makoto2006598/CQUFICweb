@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>功能建议 - 重庆大学新生服务融合中心平台</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="shared.css">
+    <style>
+        /* CSS 变量已移入 shared.css */
+        
+        
+        body { font-family: var(--font-family); background-color: var(--background-color); color: var(--text-primary); line-height: 1.5; min-height: 100vh; }
+        
+        header { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); width: 90%; height: var(--header-height);
+            background: rgba(255,255,255,0.25); backdrop-filter: blur(20px); border-radius: var(--border-radius-xl); 
+            box-shadow: var(--shadow-md); z-index: 1000; transition: var(--transition-normal); border: 1px solid rgba(255,255,255,0.3); }
+        header.scrolled { background: rgba(255,255,255,0.35); box-shadow: var(--shadow-lg); }
+        .nav-container { display: flex; justify-content: space-between; align-items: center; height: 100%; padding: 0 var(--spacing-md); }
+        .logo { display: flex; align-items: center; gap: var(--spacing-sm); text-decoration: none; }
+        .logo-icon { font-family: var(--font-family); font-size: 1.8rem; font-weight: var(--font-weight-bold); letter-spacing: 4px;
+            background: linear-gradient(135deg, #c62828 0%, #ff7043 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .logo-text { display: flex; flex-direction: column; line-height: 1.2; }
+        .logo-main { font-size: 1.1rem; font-weight: var(--font-weight-semibold); color: var(--text-primary); }
+        .logo-sub { font-size: 0.7rem; color: var(--text-secondary); }
+        .nav-links { display: flex; list-style: none; gap: var(--spacing-sm); }
+        .nav-link { text-decoration: none; color: var(--text-secondary); font-weight: var(--font-weight-medium); font-size: 0.9rem;
+            transition: var(--transition-normal); padding: var(--spacing-sm) var(--spacing-md); background: rgba(255,255,255,0.6); 
+            backdrop-filter: blur(15px); border: 1px solid rgba(255,255,255,0.4); border-radius: var(--border-radius-lg); 
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1); cursor: pointer; }
+        .nav-link:hover { color: var(--cqu-blue); transform: translateY(-2px) scale(1.05); background: rgba(255,255,255,0.7); }
+        .content-section { padding: calc(var(--spacing-xxl) + var(--header-height)) 0 var(--spacing-xxl); min-height: 100vh; display: flex; align-items: center; }
+        .section-title { font-size: clamp(2rem, 4vw, 3rem); font-weight: var(--font-weight-semibold); margin-bottom: var(--spacing-lg); text-align: center; }
+        .section-subtitle { font-size: 1.2rem; color: var(--text-secondary); max-width: 600px; margin: 0 auto var(--spacing-xl); text-align: center; }
+        .suggestion-form-container { width: 100%; max-width: 800px; margin: 0 auto; background: rgba(255,255,255,0.7); backdrop-filter: blur(15px); border-radius: var(--border-radius-lg); padding: var(--spacing-xl); box-shadow: var(--shadow-lg); border: 1px solid rgba(255,255,255,0.4); }
+        .form-group { margin-bottom: var(--spacing-md); }
+        .form-label { display: block; margin-bottom: var(--spacing-xs); font-weight: var(--font-weight-medium); color: var(--text-primary); }
+        .form-input, .form-textarea, .form-select { width: 100%; padding: var(--spacing-sm); background: rgba(255,255,255,0.8); border: 1px solid rgba(255,255,255,0.5); border-radius: var(--border-radius-md); font-family: var(--font-family); font-size: 1rem; transition: var(--transition-normal); box-shadow: var(--shadow-sm); }
+        .form-input:focus, .form-textarea:focus, .form-select:focus { outline: none; border-color: var(--cqu-blue); box-shadow: 0 0 0 2px rgba(30,79,161,0.2); }
+        .form-textarea { min-height: 150px; resize: vertical; }
+        .form-submit { display: block; width: 100%; padding: var(--spacing-md); background: linear-gradient(135deg, var(--cqu-blue) 0%, #3a6dc1 100%); color: white; border: none; border-radius: var(--border-radius-md); font-weight: var(--font-weight-semibold); font-size: 1.1rem; cursor: pointer; transition: var(--transition-normal); box-shadow: var(--shadow-md); margin-top: var(--spacing-lg); }
+        .form-submit:hover { transform: translateY(-3px); box-shadow: var(--shadow-lg); }
+        .suggestions-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: var(--spacing-lg); margin-top: var(--spacing-xl); }
+        .suggestion-card { background: rgba(255,255,255,0.7); border-radius: var(--border-radius-lg); padding: var(--spacing-lg); box-shadow: var(--shadow-sm); transition: var(--transition-normal); cursor: pointer; backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.3); overflow: hidden; }
+        .suggestion-card:hover { transform: translateY(-10px); box-shadow: var(--shadow-lg); background: rgba(255,255,255,0.9); }
+        .suggestion-header { display: flex; align-items: center; margin-bottom: var(--spacing-sm); }
+        .suggestion-icon { width: 50px; height: 50px; background: linear-gradient(135deg, rgba(30,79,161,0.7) 0%, rgba(245,124,0,0.7) 100%); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.4); box-shadow: 0 4px 12px rgba(0,0,0,0.1); border-radius: 12px; display: flex; align-items: center; justify-content: center; margin-right: var(--spacing-sm); color: white; font-size: 1.5rem; }
+        .suggestion-title { font-size: 1.3rem; font-weight: var(--font-weight-semibold); color: var(--cqu-blue); }
+        .suggestion-description { color: var(--text-secondary); margin-bottom: var(--spacing-sm); }
+        .suggestion-meta { display: flex; justify-content: space-between; font-size: 0.85rem; color: var(--text-secondary); margin-top: var(--spacing-sm); }
+        .suggestion-status { padding: 4px 8px; border-radius: 20px; font-size: 0.75rem; font-weight: var(--font-weight-medium); }
+        .status-pending { background: rgba(255,193,7,0.2); color: #f57c00; }
+        .status-review { background: rgba(30,79,161,0.2); color: var(--cqu-blue); }
+        .status-implemented { background: rgba(76,175,80,0.2); color: #4caf50; }
+        .features-section { padding: var(--spacing-xxl) 0; min-height: 100vh; display: flex; align-items: center; }
+        .features-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: var(--spacing-lg); margin-top: var(--spacing-xl); }
+        .feature-card { background: rgba(255,255,255,0.7); border-radius: var(--border-radius-lg); padding: var(--spacing-lg); box-shadow: var(--shadow-sm); transition: var(--transition-normal); cursor: pointer; display: flex; flex-direction: column; align-items: center; text-align: center; backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.3); text-decoration: none; color: inherit; overflow: hidden; }
+        .feature-card:hover { transform: translateY(-10px); box-shadow: var(--shadow-lg); background: rgba(255,255,255,0.9); }
+        .feature-icon { width: 80px; height: 80px; background: linear-gradient(135deg, rgba(30,79,161,0.7) 0%, rgba(245,124,0,0.7) 100%); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.4); box-shadow: 0 8px 20px rgba(0,0,0,0.15); border-radius: 20px; display: flex; align-items: center; justify-content: center; margin-bottom: var(--spacing-md); color: white; font-size: 2rem; transition: var(--transition-normal); }
+        .feature-card:hover .feature-icon { transform: scale(1.1) rotate(5deg); }
+        .feature-title { font-size: 1.5rem; font-weight: var(--font-weight-semibold); margin-bottom: var(--spacing-sm); color: var(--cqu-blue); }
+        .feature-description { color: var(--text-secondary); font-size: 1rem; }
+        @media (max-width: 768px) {
+            .nav-links { display: none; }
+            .features-grid, .suggestions-grid { grid-template-columns: 1fr; }
+            header { width: 95%; top: 10px; }
+            .suggestion-form-container { padding: var(--spacing-md); }
+        }
+    </style>
+</head>
+<body>
+        <!-- Header 由 shared.js 自动注入 -->
+
+    <section class="content-section">
+        <div class="container">
+            <h2 class="section-title">功能建议</h2>
+            <p class="section-subtitle">您的意见对我们至关重要，帮助我们不断改进平台体验</p>
+            
+            <div class="suggestion-form-container">
+                <form id="suggestionForm">
+                    <div class="form-group">
+                        <label for="name" class="form-label">您的姓名</label>
+                        <input type="text" id="name" class="form-input" placeholder="请输入您的姓名">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="email" class="form-label">联系方式</label>
+                        <input type="email" id="email" class="form-input" placeholder="请输入您的邮箱或电话">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="category" class="form-label">建议类型</label>
+                        <select id="category" class="form-select">
+                            <option value="">请选择建议类型</option>
+                            <option value="function">功能改进</option>
+                            <option value="design">界面设计</option>
+                            <option value="content">内容补充</option>
+                            <option value="bug">问题反馈</option>
+                            <option value="other">其他建议</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="suggestion" class="form-label">具体建议</label>
+                        <textarea id="suggestion" class="form-textarea" placeholder="请详细描述您的建议或想法..."></textarea>
+                    </div>
+                    
+                    <button type="submit" class="form-submit">提交建议</button>
+                </form>
+            </div>
+        </div>
+    </section>
+
+    <section class="content-section">
+        <div class="container">
+            <h2 class="section-title">热门建议</h2>
+            <p class="section-subtitle">查看其他同学提出的建议与我们的处理进度</p>
+            
+            <div class="suggestions-grid">
+                <div class="suggestion-card">
+                    <div class="suggestion-header">
+                        <div class="suggestion-icon"><i class="fas fa-calendar-alt"></i></div>
+                        <h3 class="suggestion-title">校园活动日历</h3>
+                    </div>
+                    <p class="suggestion-description">希望添加一个校园活动日历功能，方便查看各类社团活动、学术讲座等重要日程。</p>
+                    <div class="suggestion-meta">
+                        <span>提交者: 张三</span>
+                        <span class="suggestion-status status-implemented">已采纳</span>
+                    </div>
+                </div>
+                
+                <div class="suggestion-card">
+                    <div class="suggestion-header">
+                        <div class="suggestion-icon"><i class="fas fa-map-marked-alt"></i></div>
+                        <h3 class="suggestion-title">校园导航增强</h3>
+                    </div>
+                    <p class="suggestion-description">建议在校园地图中加入室内导航功能，特别是教学楼和图书馆的内部指引。</p>
+                    <div class="suggestion-meta">
+                        <span>提交者: 李四</span>
+                        <span class="suggestion-status status-review">审核中</span>
+                    </div>
+                </div>
+                
+                <div class="suggestion-card">
+                    <div class="suggestion-header">
+                        <div class="suggestion-icon"><i class="fas fa-book-reader"></i></div>
+                        <h3 class="suggestion-title">课程评价系统</h3>
+                    </div>
+                    <p class="suggestion-description">希望能增加课程评价功能，让学生可以分享对课程和教师的评价，帮助选课决策。</p>
+                    <div class="suggestion-meta">
+                        <span>提交者: 王五</span>
+                        <span class="suggestion-status status-pending">待评估</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="features-section">
+        <div class="container">
+            <h2 class="section-title">其他服务</h2>
+            <p class="section-subtitle">平台提供的其他实用功能</p>
+            
+            <div class="features-grid" id="featuresGrid">
+                <a href="admission-process.html" class="feature-card">
+                    <div class="feature-icon"><i class="fas fa-list-alt"></i></div>
+                    <h3 class="feature-title">入学流程</h3>
+                    <p class="feature-description">一站式了解所有入学流程</p>
+                </a>
+                <a href="dormitory-overview.html" class="feature-card">
+                    <div class="feature-icon"><i class="fas fa-home"></i></div>
+                    <h3 class="feature-title">宿舍一览</h3>
+                    <p class="feature-description">查看各类宿舍环境与设施</p>
+                </a>
+                <a href="military-tips.html" class="feature-card">
+                    <div class="feature-icon"><i class="fas fa-running"></i></div>
+                    <h3 class="feature-title">军训贴士</h3>
+                    <p class="feature-description">军训准备与注意事项</p>
+                </a>
+                <a href="freshman-trivia.html" class="feature-card">
+                    <div class="feature-icon"><i class="fas fa-clipboard-list"></i></div>
+                    <h3 class="feature-title">新生琐事</h3>
+                    <p class="feature-description">入学后需要办理的各项事务</p>
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <script src="shared.js"></script>
+    <script>
+        window.addEventListener('scroll', () => {
+            const header = document.getElementById('header');
+            header.classList.toggle('scrolled', window.scrollY > 50);
+            
+            const featureCards = document.querySelectorAll('.feature-card, .suggestion-card');
+            featureCards.forEach((card, index) => {
+                const scrollY = window.scrollY;
+                const cardTop = card.getBoundingClientRect().top + scrollY;
+                const windowHeight = window.innerHeight;
+                
+                if (scrollY + windowHeight > cardTop + 100) {
+                    const bounceIntensity = Math.min((scrollY + windowHeight - cardTop) * 0.001, 1);
+                    const cardBounceTranslate = bounceIntensity * 10;
+                    card.style.transform = `translateY(${cardBounceTranslate}px)`;
+                }
+            });
+        });
+
+        document.getElementById('suggestionForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const name = document.getElementById('name').value;
+            const email = document.getElementById('email').value;
+            const category = document.getElementById('category').value;
+            const suggestion = document.getElementById('suggestion').value;
+            
+            if (!name || !email || !category || !suggestion) {
+                alert('请填写所有必填字段！');
+                return;
+            }
+            
+            alert('感谢您的建议！我们已收到您的反馈。');
+            this.reset();
+        });
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const formContainer = document.querySelector('.suggestion-form-container');
+            const suggestionCards = document.querySelectorAll('.suggestion-card');
+            
+            formContainer.style.opacity = '0';
+            formContainer.style.transform = 'translateY(20px)';
+            
+            setTimeout(() => {
+                formContainer.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
+                formContainer.style.opacity = '1';
+                formContainer.style.transform = 'translateY(0)';
+            }, 300);
+            
+            suggestionCards.forEach((card, index) => {
+                card.style.opacity = '0';
+                card.style.transform = 'translateY(20px)';
+                
+                setTimeout(() => {
+                    card.style.transition = `opacity 0.6s ease ${index * 0.1}s, transform 0.6s ease ${index * 0.1}s`;
+                    card.style.opacity = '1';
+                    card.style.transform = 'translateY(0)';
+                }, 500 + index * 100);
+            });
+        });
+    </script>
+</body>
+</html>

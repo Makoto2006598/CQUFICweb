@@ -1,0 +1,420 @@
+/*
+ * CQU FIC — Mobile Portrait Stylesheet
+ * ======================================
+ * 统一处理所有页面的移动端竖屏体验
+ * 覆盖顺序：基础重置 → 布局 → 组件 → 页面专项
+ */
+
+/* ═══════════════════════════════════════════════════
+   0. 基础 & 全局重置
+═══════════════════════════════════════════════════ */
+
+/* 关闭 iOS 点击高亮 */
+* { -webkit-tap-highlight-color: transparent; }
+
+/* 防止 iOS 字体大小自动调整 */
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+/* 全局触摸动作优化 */
+body {
+  touch-action: pan-y;
+  overscroll-behavior-y: none; /* 禁止下拉刷新橡皮筋效果 */
+}
+
+/* 所有横向滚动容器加动量滚动 */
+[style*="overflow-x: auto"],
+.cards-scroll,
+.filter-scroll,
+.info-grid,
+.tab-scroll {
+  -webkit-overflow-scrolling: touch;
+  scroll-snap-type: x mandatory;
+  overscroll-behavior-x: contain;
+}
+
+/* ═══════════════════════════════════════════════════
+   1. Hero Section — 使用 dvh 避免地址栏抖动
+═══════════════════════════════════════════════════ */
+@media (max-width: 768px) {
+  /* 100dvh = 动态视口高度，随浏览器工具栏变化 */
+  .hero,
+  .feedback-hero {
+    min-height: 100dvh;
+    min-height: 100svh; /* fallback for older Safari */
+  }
+
+  /* 主页 hero 加顶部偏移，防止内容被 header 遮住 */
+  .hero-content {
+    padding-top: calc(80px + env(safe-area-inset-top, 0px));
+  }
+}
+
+/* ═══════════════════════════════════════════════════
+   2. Header — 刘海屏 / 动态岛安全区
+═══════════════════════════════════════════════════ */
+@media (max-width: 768px) {
+  header {
+    /* top 加上刘海安全区 */
+    top: max(10px, env(safe-area-inset-top, 10px)) !important;
+    width: calc(100% - 24px) !important;
+    left: 50% !important;
+    transform: translateX(-50%) !important;
+    height: 56px !important;
+  }
+
+  /* 移动端导航抽屉：玻璃质感 + 安全区 */
+  .nav-links {
+    top: calc(56px + max(10px, env(safe-area-inset-top, 10px)) + 8px) !important;
+    /* 覆盖各页面写死的 rgba(255,255,255,0.95) */
+    background: rgba(240, 246, 255, 0.75) !important;
+    backdrop-filter: blur(48px) saturate(240%) brightness(1.06) !important;
+    -webkit-backdrop-filter: blur(48px) saturate(240%) brightness(1.06) !important;
+    border: 0.5px solid rgba(255,255,255,0.28) !important;
+    box-shadow:
+      0 0 0 0.5px rgba(255,255,255,0.22),
+      0 8px 32px rgba(0,0,0,0.12),
+      inset 0 1.5px 0 rgba(255,255,255,0.80) !important;
+    border-radius: 20px !important;
+    left: 12px !important;
+    width: calc(100% - 24px) !important;
+  }
+}
+
+/* ═══════════════════════════════════════════════════
+   3. 表单控件 — 防止 iOS 自动缩放（需 >= 16px）
+═══════════════════════════════════════════════════ */
+@media (max-width: 768px) {
+  input,
+  select,
+  textarea,
+  .form-input,
+  .form-select,
+  .form-textarea,
+  #search-input,
+  .comment-input {
+    font-size: 16px !important; /* iOS zoom 阈值 */
+    border-radius: 12px !important;
+  }
+
+  /* 表单行：手机上改为单列 */
+  .form-row {
+    grid-template-columns: 1fr !important;
+    gap: 16px !important;
+  }
+
+  /* 表单容器内边距收紧 */
+  .feedback-form,
+  .login-container,
+  .post-form {
+    padding: 20px 16px !important;
+    border-radius: 20px !important;
+  }
+
+  /* 提交按钮更大 touch target */
+  .submit-btn,
+  .login-btn,
+  .forum-btn,
+  .action-btn {
+    min-height: 52px !important;
+    font-size: 16px !important;
+    border-radius: 14px !important;
+  }
+}
+
+/* ═══════════════════════════════════════════════════
+   4. 地图页专项
+═══════════════════════════════════════════════════ */
+@media (max-width: 768px) {
+  /* 顶部搜索栏：缩小并处理安全区 */
+  .top-bar {
+    padding: calc(max(10px, env(safe-area-inset-top, 10px)) + 60px) 12px 8px !important;
+    gap: 10px;
+  }
+
+  .search-wrapper {
+    max-width: none !important; /* 搜索框撑满 */
+    flex: 1;
+  }
+
+  .search-box {
+    height: 44px !important;
+    border-radius: 22px !important;
+  }
+
+  #search-input {
+    font-size: 16px !important;
+  }
+
+  /* 校区按钮更大 */
+  .campus-btn {
+    width: 44px !important;
+    height: 44px !important;
+    border-radius: 22px !important;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* 底部区域加底部安全区 */
+  .bottom-area {
+    padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  /* filter chips：更大间距 + 动量滚动 */
+  .filter-scroll {
+    gap: 8px !important;
+    padding: 12px 16px !important;
+    -webkit-overflow-scrolling: touch;
+    scroll-snap-type: x proximity;
+  }
+
+  .filter-chip {
+    height: 36px !important;
+    padding: 0 16px !important;
+    border-radius: 18px !important;
+    font-size: 13px !important;
+    white-space: nowrap;
+    flex-shrink: 0;
+    scroll-snap-align: start;
+  }
+
+  /* 地点卡片：适当缩小 */
+  .place-card {
+    min-width: 130px !important;
+    height: 100px !important;
+    border-radius: 18px !important;
+    padding: 12px !important;
+  }
+
+  /* 搜索结果下拉：防溢出屏幕 */
+  .search-results {
+    max-height: 50vh !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* 校区菜单 */
+  .campus-menu {
+    top: calc(44px + 8px) !important;
+    right: 0 !important;
+    left: auto !important;
+    min-width: 140px;
+    border-radius: 16px !important;
+  }
+}
+
+/* ═══════════════════════════════════════════════════
+   5. 入学流程页 — 圆形时间轴竖屏优化
+═══════════════════════════════════════════════════ */
+@media (max-width: 768px) {
+  /* 圆形容器居中，防止气泡被截断 */
+  .circle-section,
+  .content-section {
+    overflow: visible !important;
+    padding-left: 16px !important;
+    padding-right: 16px !important;
+  }
+
+  /* timeline popup 覆盖层遮罩 */
+  .timeline-popup.active::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.25);
+    z-index: -1;
+    border-radius: 0;
+    backdrop-filter: blur(2px);
+    pointer-events: none;
+  }
+
+  /* 弹窗内按钮加大 */
+  .popup-btn {
+    min-height: 44px !important;
+    font-size: 15px !important;
+    padding: 12px 20px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    border-radius: 12px !important;
+  }
+}
+
+/* ═══════════════════════════════════════════════════
+   6. 论坛页专项
+═══════════════════════════════════════════════════ */
+@media (max-width: 768px) {
+  /* tab 切换按钮更大 */
+  .post-tab {
+    min-height: 44px !important;
+    padding: 10px 16px !important;
+    font-size: 15px !important;
+    border-radius: 12px !important;
+  }
+
+  /* 评论输入区 */
+  .comment-form {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .comment-input {
+    font-size: 16px !important;
+    min-height: 44px !important;
+    border-radius: 12px !important;
+    padding: 12px !important;
+  }
+
+  .comment-submit {
+    min-height: 44px !important;
+    font-size: 15px !important;
+    border-radius: 12px !important;
+  }
+
+  /* 帖子操作按钮 */
+  .post-actions {
+    gap: 12px !important;
+  }
+
+  .action-btn {
+    min-height: 44px !important;
+    padding: 10px 16px !important;
+    font-size: 14px !important;
+    border-radius: 12px !important;
+  }
+
+  /* 登录卡片 */
+  .login-container {
+    margin: 0 4px !important;
+  }
+}
+
+/* ═══════════════════════════════════════════════════
+   7. 信息汇总库专项
+═══════════════════════════════════════════════════ */
+@media (max-width: 768px) {
+  /* 分类 tab 横向滚动 */
+  .category-tabs,
+  .tab-nav {
+    -webkit-overflow-scrolling: touch;
+    scroll-snap-type: x proximity;
+    padding-bottom: 4px;
+  }
+
+  /* 信息卡片 */
+  .info-card,
+  .link-card {
+    border-radius: 16px !important;
+    padding: 16px !important;
+  }
+
+  /* 搜索框 */
+  .search-bar input,
+  #librarySearch {
+    font-size: 16px !important;
+    height: 44px !important;
+    border-radius: 12px !important;
+  }
+}
+
+/* ═══════════════════════════════════════════════════
+   8. Continued / 开发中页面
+═══════════════════════════════════════════════════ */
+@media (max-width: 768px) {
+  /* 避免液体圆与气泡在竖屏下相互遮挡 */
+  .liquid-section {
+    padding: 20px 0 !important;
+  }
+
+  .center-content {
+    padding: 24px 20px !important;
+    border-radius: 24px !important;
+  }
+
+  /* 进度条 */
+  .progress-container {
+    height: 8px !important;
+    border-radius: 4px !important;
+  }
+}
+
+/* ═══════════════════════════════════════════════════
+   9. 小屏 (≤ 390px) 进一步收紧
+═══════════════════════════════════════════════════ */
+@media (max-width: 390px) {
+  .hero-title,
+  .feedback-title { font-size: 1.7rem !important; }
+  .section-title   { font-size: 1.5rem !important; }
+  .hero-cta        { font-size: 0.95rem !important; padding: 14px 20px !important; }
+
+  .container { padding: 0 12px !important; }
+
+  /* logo 精简 */
+  .logo-main { font-size: 0.82rem !important; }
+  .logo-sub  { display: none !important; }
+
+  header { height: 52px !important; }
+}
+
+/* ═══════════════════════════════════════════════════
+   10. 触摸设备 — 去掉 hover 效果，改用 active
+═══════════════════════════════════════════════════ */
+@media (hover: none) and (pointer: coarse) {
+  /* 取消所有 hover 位移/缩放 */
+  .nav-link:hover,
+  .feature-card:hover,
+  .hero-cta:hover,
+  .filter-chip:hover,
+  .place-card:hover,
+  .feature-item:hover,
+  .submit-btn:hover,
+  .login-btn:hover,
+  .forum-btn:hover,
+  .action-btn:hover,
+  .popup-btn:hover,
+  .liquid-circle:hover {
+    transform: none !important;
+  }
+
+  /* 替换为 active 反馈 */
+  .nav-link:active,
+  .feature-card:active,
+  .hero-cta:active,
+  .filter-chip:active,
+  .place-card:active,
+  .submit-btn:active,
+  .login-btn:active,
+  .forum-btn:active,
+  .action-btn:active,
+  .popup-btn:active {
+    transform: scale(0.97) !important;
+    transition: transform 0.1s ease !important;
+  }
+
+  /* 取消光泽扫光伪元素动画 */
+  .nav-link::after,
+  .hero-cta::after,
+  .submit-btn::after {
+    display: none !important;
+  }
+
+  /* dropdown 在触摸设备上不用 hover 触发，用 JS 控制 */
+  .dropdown:hover .dropdown-content {
+    opacity: 0 !important;
+    visibility: hidden !important;
+  }
+}
+
+/* ═══════════════════════════════════════════════════
+   11. bg.js canvas — 移动端减少线条数
+═══════════════════════════════════════════════════ */
+@media (max-width: 768px) {
+  /* 确保 canvas 不影响触摸滚动 */
+  canvas[style*="position:fixed"] {
+    pointer-events: none !important;
+  }
+}

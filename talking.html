@@ -1,0 +1,980 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>包罗万象社区 - CQU FIC</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="shared.css">
+    <!-- Supabase JS SDK (v2) -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <style>
+        /* ── 页面背景 ─────────────────────────────────── */
+        body {
+            background: linear-gradient(160deg, #eef2fb 0%, #e6eaf4 60%, #dde5f5 100%);
+            min-height: 100vh;
+        }
+
+        .page-wrapper {
+            padding-top: calc(var(--header-height) + 48px);
+            padding-bottom: var(--spacing-xxl);
+            min-height: 100vh;
+        }
+
+        /* ── 视图切换 ─────────────────────────────────── */
+        .hidden { display: none !important; }
+        .view { display: block; }
+        .view.hidden { display: none; }
+
+        /* ── 帖子列表页 ───────────────────────────────── */
+        .forum-hero {
+            text-align: center;
+            margin-bottom: var(--spacing-xl);
+            padding: var(--spacing-xl) 0 var(--spacing-lg);
+        }
+
+        .forum-hero-title {
+            font-size: clamp(2.2rem, 5vw, 3.5rem);
+            font-weight: var(--font-weight-bold);
+            color: var(--text-primary);
+            letter-spacing: -1px;
+            margin-bottom: var(--spacing-sm);
+            animation: fadeInUp .7s ease both;
+        }
+
+        .forum-hero-subtitle {
+            font-size: 1.1rem;
+            color: var(--text-secondary);
+            animation: fadeInUp .7s .15s ease both;
+            opacity: 0;
+        }
+
+        /* 分类标签筛选 */
+        .category-bar {
+            display: flex;
+            gap: var(--spacing-sm);
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-top: var(--spacing-lg);
+            animation: fadeInUp .7s .25s ease both;
+            opacity: 0;
+        }
+
+        .cat-btn {
+            padding: 6px 18px;
+            border-radius: 999px;
+            border: 1.5px solid rgba(30,79,161,.25);
+            background: rgba(255,255,255,.5);
+            backdrop-filter: blur(10px);
+            color: var(--text-secondary);
+            font-size: .9rem;
+            font-weight: var(--font-weight-medium);
+            cursor: pointer;
+            transition: all var(--transition-fast) ease;
+            font-family: var(--font-family);
+        }
+
+        .cat-btn:hover, .cat-btn.active {
+            background: var(--cqu-blue);
+            border-color: var(--cqu-blue);
+            color: #fff;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(30,79,161,.3);
+        }
+
+        /* 帖子卡片网格 */
+        .posts-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: var(--spacing-lg);
+        }
+
+        .post-card {
+            background: rgba(255,255,255,.72);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255,255,255,.5);
+            border-radius: var(--border-radius-xl);
+            padding: var(--spacing-lg);
+            cursor: pointer;
+            transition: all .35s cubic-bezier(.175,.885,.32,1.275);
+            box-shadow: var(--shadow-sm);
+            display: flex;
+            flex-direction: column;
+            gap: var(--spacing-sm);
+            animation: fadeInUp .6s ease both;
+            text-decoration: none;
+            color: inherit;
+        }
+
+        .post-card:hover {
+            transform: translateY(-8px) scale(1.01);
+            box-shadow: var(--shadow-lg);
+            background: rgba(255,255,255,.9);
+            border-color: rgba(30,79,161,.2);
+        }
+
+        .post-card-top {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .post-category-badge {
+            font-size: .75rem;
+            font-weight: var(--font-weight-semibold);
+            letter-spacing: .5px;
+            padding: 3px 10px;
+            border-radius: 999px;
+            background: rgba(30,79,161,.1);
+            color: var(--cqu-blue);
+        }
+
+        .post-card-date {
+            font-size: .8rem;
+            color: var(--text-tertiary);
+        }
+
+        .post-card-title {
+            font-size: 1.15rem;
+            font-weight: var(--font-weight-semibold);
+            color: var(--text-primary);
+            line-height: 1.4;
+            margin: 0;
+        }
+
+        .post-card-summary {
+            font-size: .9rem;
+            color: var(--text-secondary);
+            line-height: 1.6;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .post-card-footer {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-md);
+            margin-top: auto;
+            padding-top: var(--spacing-sm);
+            border-top: 1px solid rgba(0,0,0,.06);
+            font-size: .82rem;
+            color: var(--text-tertiary);
+        }
+
+        .post-card-footer span {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        /* ── 帖子详情页 ───────────────────────────────── */
+        .back-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 20px;
+            border-radius: 999px;
+            background: rgba(255,255,255,.6);
+            backdrop-filter: blur(15px);
+            border: 1px solid rgba(255,255,255,.4);
+            color: var(--text-secondary);
+            font-size: .9rem;
+            font-weight: var(--font-weight-medium);
+            cursor: pointer;
+            transition: all var(--transition-fast) ease;
+            font-family: var(--font-family);
+            margin-bottom: var(--spacing-lg);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .back-btn:hover {
+            background: rgba(255,255,255,.85);
+            color: var(--cqu-blue);
+            transform: translateX(-4px);
+            box-shadow: var(--shadow-md);
+        }
+
+        .post-article {
+            background: rgba(255,255,255,.78);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            border: 1px solid rgba(255,255,255,.5);
+            border-radius: var(--border-radius-xl);
+            padding: var(--spacing-xl) var(--spacing-xxl);
+            box-shadow: var(--shadow-md);
+            margin-bottom: var(--spacing-xl);
+            animation: fadeInUp .5s ease both;
+        }
+
+        .post-article-title {
+            font-size: clamp(1.6rem, 3vw, 2.4rem);
+            font-weight: var(--font-weight-bold);
+            color: var(--text-primary);
+            line-height: 1.3;
+            margin: var(--spacing-md) 0;
+        }
+
+        .post-article-meta {
+            font-size: .85rem;
+            color: var(--text-tertiary);
+            margin-bottom: var(--spacing-xl);
+            padding-bottom: var(--spacing-lg);
+            border-bottom: 1px solid rgba(0,0,0,.08);
+        }
+
+        /* 正文排版 */
+        .post-body { line-height: 1.9; color: var(--text-primary); }
+        .post-body p      { margin-bottom: var(--spacing-md); }
+        .post-body h3     { font-size: 1.15rem; font-weight: var(--font-weight-semibold); margin: var(--spacing-lg) 0 var(--spacing-sm); color: var(--cqu-blue); }
+        .post-body ul     { padding-left: var(--spacing-lg); margin-bottom: var(--spacing-md); }
+        .post-body li     { margin-bottom: var(--spacing-xs); }
+        .post-body strong { color: var(--text-primary); }
+
+        /* ── 评论区 ───────────────────────────────────── */
+        .comments-section {
+            animation: fadeInUp .5s .15s ease both;
+            opacity: 0;
+        }
+
+        .comments-title {
+            font-size: 1.3rem;
+            font-weight: var(--font-weight-semibold);
+            color: var(--text-primary);
+            margin-bottom: var(--spacing-lg);
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+        }
+
+        .comments-count {
+            font-size: .85rem;
+            color: var(--text-tertiary);
+            font-weight: var(--font-weight-normal);
+        }
+
+        .loading-comments {
+            text-align: center;
+            padding: var(--spacing-xl);
+            color: var(--text-tertiary);
+        }
+
+        .no-comments {
+            text-align: center;
+            padding: var(--spacing-xl) var(--spacing-md);
+            color: var(--text-tertiary);
+            background: rgba(255,255,255,.5);
+            border-radius: var(--border-radius-lg);
+            border: 1.5px dashed rgba(0,0,0,.1);
+            margin-bottom: var(--spacing-xl);
+        }
+
+        /* 单条评论 */
+        .comment-item {
+            display: flex;
+            gap: var(--spacing-md);
+            margin-bottom: var(--spacing-md);
+            animation: fadeInUp .4s ease both;
+        }
+
+        .comment-avatar {
+            width: 40px;
+            height: 40px;
+            min-width: 40px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--cqu-blue), var(--cqu-light-blue));
+            color: #fff;
+            font-weight: var(--font-weight-semibold);
+            font-size: 1rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 8px rgba(30,79,161,.25);
+            flex-shrink: 0;
+        }
+
+        .comment-bubble {
+            flex: 1;
+            background: rgba(255,255,255,.75);
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
+            border: 1px solid rgba(255,255,255,.5);
+            border-radius: 0 var(--border-radius-lg) var(--border-radius-lg) var(--border-radius-lg);
+            padding: var(--spacing-md);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .comment-header {
+            display: flex;
+            align-items: baseline;
+            gap: var(--spacing-sm);
+            margin-bottom: 6px;
+            flex-wrap: wrap;
+        }
+
+        .comment-author {
+            font-weight: var(--font-weight-semibold);
+            color: var(--cqu-blue);
+            font-size: .95rem;
+        }
+
+        .comment-date {
+            font-size: .78rem;
+            color: var(--text-tertiary);
+        }
+
+        .comment-content {
+            color: var(--text-primary);
+            font-size: .95rem;
+            line-height: 1.7;
+            word-break: break-word;
+        }
+
+        .comment-content .mention {
+            color: var(--cqu-blue);
+            font-weight: var(--font-weight-medium);
+        }
+
+        .reply-trigger {
+            margin-top: 8px;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            font-size: .8rem;
+            color: var(--text-tertiary);
+            cursor: pointer;
+            background: none;
+            border: none;
+            font-family: var(--font-family);
+            padding: 0;
+            transition: color var(--transition-fast);
+        }
+
+        .reply-trigger:hover { color: var(--cqu-blue); }
+
+        /* 回复列表 */
+        .replies-list {
+            margin-top: var(--spacing-md);
+            padding-top: var(--spacing-md);
+            border-top: 1px solid rgba(0,0,0,.06);
+            display: flex;
+            flex-direction: column;
+            gap: var(--spacing-md);
+        }
+
+        .comment-item.is-reply { margin-bottom: 0; }
+
+        .comment-item.is-reply .comment-avatar {
+            width: 32px;
+            height: 32px;
+            min-width: 32px;
+            font-size: .85rem;
+            background: linear-gradient(135deg, var(--cqu-orange), #ff8f00);
+        }
+
+        .comment-item.is-reply .comment-bubble {
+            background: rgba(255,255,255,.55);
+        }
+
+        /* ── 留言表单 ─────────────────────────────────── */
+        .comment-form-card {
+            background: rgba(255,255,255,.78);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            border: 1px solid rgba(255,255,255,.5);
+            border-radius: var(--border-radius-xl);
+            padding: var(--spacing-xl);
+            box-shadow: var(--shadow-md);
+            margin-top: var(--spacing-xl);
+        }
+
+        .form-title-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: var(--spacing-lg);
+        }
+
+        .form-title {
+            font-size: 1.1rem;
+            font-weight: var(--font-weight-semibold);
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .reply-badge {
+            font-size: .8rem;
+            background: rgba(30,79,161,.1);
+            color: var(--cqu-blue);
+            padding: 3px 10px;
+            border-radius: 999px;
+            font-weight: var(--font-weight-medium);
+        }
+
+        .cancel-reply-btn {
+            font-size: .82rem;
+            color: var(--text-tertiary);
+            cursor: pointer;
+            background: none;
+            border: none;
+            font-family: var(--font-family);
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            transition: color var(--transition-fast);
+        }
+
+        .cancel-reply-btn:hover { color: var(--cqu-red); }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: var(--spacing-md);
+            margin-bottom: var(--spacing-md);
+        }
+
+        .form-field {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .form-field label {
+            font-size: .85rem;
+            font-weight: var(--font-weight-medium);
+            color: var(--text-secondary);
+        }
+
+        .form-field label .required { color: var(--cqu-red); margin-left: 2px; }
+        .form-field label .hint     { font-weight: 400; color: var(--text-tertiary); font-size: .78rem; }
+
+        .form-input, .form-textarea {
+            width: 100%;
+            padding: 10px var(--spacing-sm);
+            border: 1.5px solid rgba(0,0,0,.1);
+            border-radius: var(--border-radius-md);
+            font-size: .95rem;
+            font-family: var(--font-family);
+            background: rgba(255,255,255,.7);
+            color: var(--text-primary);
+            transition: all var(--transition-fast) ease;
+            outline: none;
+        }
+
+        .form-input:focus, .form-textarea:focus {
+            border-color: var(--cqu-blue);
+            background: rgba(255,255,255,.95);
+            box-shadow: 0 0 0 3px rgba(30,79,161,.08);
+        }
+
+        .form-textarea {
+            height: 120px;
+            resize: vertical;
+            margin-bottom: var(--spacing-md);
+            display: block;
+        }
+
+        .form-submit-row {
+            display: flex;
+            justify-content: flex-end;
+        }
+
+        .submit-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px var(--spacing-lg);
+            background: var(--cqu-blue);
+            color: #fff;
+            border: none;
+            border-radius: var(--border-radius-lg);
+            font-size: 1rem;
+            font-weight: var(--font-weight-medium);
+            font-family: var(--font-family);
+            cursor: pointer;
+            transition: all .3s cubic-bezier(.175,.885,.32,1.275);
+            box-shadow: 0 4px 14px rgba(30,79,161,.35);
+        }
+
+        .submit-btn:hover {
+            background: var(--cqu-dark-blue);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(30,79,161,.45);
+        }
+
+        .submit-btn:disabled {
+            opacity: .6;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+
+        /* ── Toast ────────────────────────────────────── */
+        .toast {
+            position: fixed;
+            bottom: var(--spacing-xl);
+            left: 50%;
+            transform: translateX(-50%) translateY(20px);
+            opacity: 0;
+            background: rgba(29,29,31,.92);
+            backdrop-filter: blur(20px);
+            color: #fff;
+            padding: 12px 24px;
+            border-radius: 999px;
+            font-size: .95rem;
+            z-index: 9999;
+            animation: toastIn .35s cubic-bezier(.175,.885,.32,1.275) forwards;
+            white-space: nowrap;
+            pointer-events: none;
+        }
+
+        .toast.out {
+            animation: toastOut .3s ease forwards;
+        }
+
+        @keyframes toastIn  {
+            to { transform: translateX(-50%) translateY(0); opacity: 1; }
+        }
+        @keyframes toastOut {
+            from { transform: translateX(-50%) translateY(0); opacity: 1; }
+            to   { transform: translateX(-50%) translateY(20px); opacity: 0; }
+        }
+
+        /* ── 响应式 ───────────────────────────────────── */
+        @media (max-width: 768px) {
+            .post-article { padding: var(--spacing-lg) var(--spacing-md); }
+            .form-row { grid-template-columns: 1fr; }
+            .posts-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <!-- Header 由 shared.js 自动注入 -->
+
+    <div class="page-wrapper">
+        <div class="container">
+
+            <!-- ══ 视图 A：帖子列表 ══ -->
+            <div id="view-list" class="view">
+                <div class="forum-hero">
+                    <h1 class="forum-hero-title">包罗万象社区</h1>
+                    <p class="forum-hero-subtitle">重大新生的聚集地 · 分享生活 · 互相帮助 · 认识朋友</p>
+                    <div class="category-bar" id="categoryBar">
+                        <button class="cat-btn active" data-cat="全部">全部</button>
+                        <button class="cat-btn" data-cat="通知公告">通知公告</button>
+                        <button class="cat-btn" data-cat="校园生活">校园生活</button>
+                        <button class="cat-btn" data-cat="学习资源">学习资源</button>
+                        <button class="cat-btn" data-cat="互助问答">互助问答</button>
+                    </div>
+                </div>
+
+                <div id="postsGrid" class="posts-grid"></div>
+            </div>
+
+            <!-- ══ 视图 B：帖子详情 ══ -->
+            <div id="view-detail" class="view hidden">
+
+                <button class="back-btn" id="backBtn">
+                    <i class="fas fa-arrow-left"></i> 返回列表
+                </button>
+
+                <article class="post-article" id="postArticle"></article>
+
+                <section class="comments-section" id="commentsSection">
+                    <h3 class="comments-title">
+                        <i class="far fa-comments"></i>
+                        留言区
+                        <span class="comments-count" id="commentsCount"></span>
+                    </h3>
+
+                    <div id="commentsList"></div>
+
+                    <!-- 留言表单 -->
+                    <div class="comment-form-card" id="commentFormCard">
+                        <div class="form-title-row">
+                            <span class="form-title" id="formTitle">
+                                <i class="fas fa-pen"></i> 写下留言
+                            </span>
+                            <button class="cancel-reply-btn hidden" id="cancelReplyBtn">
+                                <i class="fas fa-times"></i> 取消回复
+                            </button>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-field">
+                                <label>昵称<span class="required">*</span></label>
+                                <input class="form-input" id="fieldNickname"
+                                       placeholder="你的名字或昵称" maxlength="20">
+                            </div>
+                            <div class="form-field">
+                                <label>联系方式
+                                    <span class="hint">（选填，仅管理员可见）</span>
+                                </label>
+                                <input class="form-input" id="fieldContact"
+                                       placeholder="邮箱或手机号" maxlength="50">
+                            </div>
+                        </div>
+
+                        <textarea class="form-textarea" id="fieldContent"
+                                  placeholder="写下你的想法、疑问或回答…" maxlength="500"></textarea>
+
+                        <div class="form-submit-row">
+                            <button class="submit-btn" id="submitBtn">
+                                <i class="fas fa-paper-plane"></i> 发送留言
+                            </button>
+                        </div>
+                    </div>
+                </section>
+        </div>
+    </div>
+            </div>
+            </div>
+
+        </div>
+    </div>
+
+    <script src="shared.js"></script>
+    <script>
+    /* ============================================================
+       ⚙️  配置区
+    ============================================================ */
+    // Worker 地址（两个填一样也可以）
+    // WORKER_URL：用于管理员面板，填 workers.dev 地址即可
+    // COMMENT_URL：用于游客留言，填 api.cqufic.cn 保证国内可用
+    const WORKER_URL    = 'https://cqufic-comment.notetopdf.workers.dev'; // ← 改成你的 workers.dev 地址
+    const COMMENT_URL   = 'https://api.cqufic.cn';  // 留言提交走这里，国内可用
+    const SUPABASE_URL      = 'https://rvlwcucuhiigiwwaxcvb.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ2bHdjdWN1aGlpZ2l3d2F4Y3ZiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI3ODY0NDgsImV4cCI6MjA4ODM2MjQ0OH0.dpgMRMAcjD5QIgY5fINWOzYvI0-4F8Z4BcTKkW9oYF8';
+
+    /* ============================================================
+       初始化 Supabase 客户端（仅用于读评论）
+    ============================================================ */
+    const db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    /* ============================================================
+       应用状态
+    ============================================================ */
+    let allPosts      = [];
+    let filteredPosts = [];
+    let currentPostId = null;
+    let replyingTo    = null;
+
+    /* ============================================================
+       启动
+    ============================================================ */
+    async function init() {
+        await loadPosts();
+
+        document.getElementById('backBtn').addEventListener('click', () => navigateTo('/'));
+        document.getElementById('cancelReplyBtn').addEventListener('click', cancelReply);
+        document.getElementById('submitBtn').addEventListener('click', submitComment);
+        initCategoryFilter();
+
+        window.addEventListener('hashchange', router);
+        router();
+    }
+
+    async function loadPosts() {
+        try {
+            const res = await fetch(`${WORKER_URL}/api/posts`);
+            allPosts = filteredPosts = await res.json();
+        } catch (e) {
+            console.error('无法加载帖子', e);
+            allPosts = filteredPosts = [];
+        }
+    }
+
+    /* ============================================================
+       路由（基于 URL hash）
+    ============================================================ */
+    function router() {
+        const hash = window.location.hash;
+        if (hash.startsWith('#/post/')) {
+            showDetail(decodeURIComponent(hash.slice(7)));
+        } else if (hash === '#/admin') {
+            window.location.href = 'admin.html';
+        } else {
+            showList();
+        }
+    }
+
+    function navigateTo(path) {
+        window.location.hash = path;
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    /* ============================================================
+       视图 A：帖子列表
+    ============================================================ */
+    function showList() {
+        document.getElementById('view-list').classList.remove('hidden');
+        document.getElementById('view-detail').classList.add('hidden');
+        renderGrid(filteredPosts);
+    }
+
+    function renderGrid(list) {
+        const grid = document.getElementById('postsGrid');
+        if (!list.length) {
+            grid.innerHTML = '<p style="text-align:center;color:var(--text-tertiary);padding:3rem 0">该分类暂无帖子</p>';
+            return;
+        }
+        grid.innerHTML = list.map((post, i) => `
+            <div class="post-card" style="animation-delay:${i * 0.07}s"
+                 onclick="navigateTo('/post/${encodeURIComponent(post.id)}')">
+                <div class="post-card-top">
+                    <span class="post-category-badge">${post.category}</span>
+                    <span class="post-card-date">${post.date}</span>
+                </div>
+                <h2 class="post-card-title">${esc(post.title)}</h2>
+                <p class="post-card-summary">${esc(post.summary)}</p>
+                <div class="post-card-footer">
+                    <span><i class="far fa-comment"></i> 留言</span>
+                    <span><i class="far fa-calendar"></i> ${post.date}</span>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    function initCategoryFilter() {
+        document.getElementById('categoryBar').addEventListener('click', e => {
+            const btn = e.target.closest('.cat-btn');
+            if (!btn) return;
+            document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            const cat = btn.dataset.cat;
+            filteredPosts = cat === '全部' ? [...allPosts] : allPosts.filter(p => p.category === cat);
+            renderGrid(filteredPosts);
+        });
+    }
+
+    /* ============================================================
+       视图 B：帖子详情
+    ============================================================ */
+    async function showDetail(postId) {
+        const post = allPosts.find(p => p.id === postId);
+        if (!post) { navigateTo('/'); return; }
+
+        currentPostId = postId;
+        replyingTo    = null;
+
+        document.getElementById('view-list').classList.add('hidden');
+        document.getElementById('view-detail').classList.remove('hidden');
+        resetForm();
+
+        document.getElementById('postArticle').innerHTML = `
+            <span class="post-category-badge">${post.category}</span>
+            <h1 class="post-article-title">${esc(post.title)}</h1>
+            <p class="post-article-meta">
+                <i class="far fa-calendar-alt"></i>&nbsp;${post.date}
+            </p>
+            <div class="post-body">${post.content}</div>
+        `;
+
+        await loadComments(postId);
+    }
+
+    /* ============================================================
+       评论：加载
+    ============================================================ */
+    async function loadComments(postId) {
+        document.getElementById('commentsList').innerHTML =
+            `<div class="loading-comments"><i class="fas fa-circle-notch fa-spin"></i>&nbsp; 加载留言中…</div>`;
+
+        const { data, error } = await db
+            .from('comments')
+            .select('id, parent_id, nickname, content, created_at')
+            .eq('post_id', postId)
+            .eq('is_approved', true)
+            .order('created_at', { ascending: true });
+
+        if (error) {
+            document.getElementById('commentsList').innerHTML =
+                `<p class="no-comments"><i class="fas fa-exclamation-circle"></i> 加载失败，请刷新重试</p>`;
+            return;
+        }
+
+        renderComments(data || []);
+    }
+
+    /* ============================================================
+       评论：渲染（一级嵌套）
+    ============================================================ */
+    function renderComments(comments) {
+        const topLevel  = comments.filter(c => !c.parent_id);
+        const repliesOf = {};
+        comments.filter(c => c.parent_id).forEach(r => {
+            (repliesOf[r.parent_id] = repliesOf[r.parent_id] || []).push(r);
+        });
+
+        const count = comments.length;
+        document.getElementById('commentsCount').textContent = count ? `${count} 条` : '';
+
+        if (!topLevel.length) {
+            document.getElementById('commentsList').innerHTML =
+                `<p class="no-comments">还没有留言，来做第一个留言的人吧 ✨</p>`;
+            return;
+        }
+
+        document.getElementById('commentsList').innerHTML = topLevel.map((c, i) => `
+            <div class="comment-item" id="c-${c.id}" style="animation-delay:${i * 0.05}s">
+                <div class="comment-avatar">${initial(c.nickname)}</div>
+                <div class="comment-bubble">
+                    <div class="comment-header">
+                        <span class="comment-author">${esc(c.nickname)}</span>
+                        <span class="comment-date">${fmtDate(c.created_at)}</span>
+                    </div>
+                    <div class="comment-content">${fmtContent(c.content)}</div>
+                    <button class="reply-trigger"
+                            onclick="startReply('${c.id}','${escAttr(c.nickname)}')">
+                        <i class="fas fa-reply"></i> 回复
+                    </button>
+
+                    ${(repliesOf[c.id] || []).length ? `
+                    <div class="replies-list">
+                        ${(repliesOf[c.id] || []).map(r => `
+                        <div class="comment-item is-reply" id="c-${r.id}">
+                            <div class="comment-avatar">${initial(r.nickname)}</div>
+                            <div class="comment-bubble">
+                                <div class="comment-header">
+                                    <span class="comment-author">${esc(r.nickname)}</span>
+                                    <span class="comment-date">${fmtDate(r.created_at)}</span>
+                                </div>
+                                <div class="comment-content">${fmtContent(r.content)}</div>
+                                <button class="reply-trigger"
+                                        onclick="startReply('${c.id}','${escAttr(r.nickname)}')">
+                                    <i class="fas fa-reply"></i> 回复
+                                </button>
+                            </div>
+                        </div>`).join('')}
+                    </div>` : ''}
+                </div>
+            </div>
+        `).join('');
+    }
+
+    /* ============================================================
+       评论：提交
+    ============================================================ */
+    function startReply(commentId, nickname) {
+        replyingTo = { id: commentId, nickname };
+        document.getElementById('formTitle').innerHTML =
+            `<i class="fas fa-reply"></i> 回复 <span class="reply-badge">@${esc(nickname)}</span>`;
+        document.getElementById('cancelReplyBtn').classList.remove('hidden');
+        document.getElementById('fieldContent').focus();
+        document.getElementById('commentFormCard').scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+
+    function cancelReply() {
+        replyingTo = null;
+        document.getElementById('formTitle').innerHTML = '<i class="fas fa-pen"></i> 写下留言';
+        document.getElementById('cancelReplyBtn').classList.add('hidden');
+    }
+
+    function resetForm() {
+        cancelReply();
+        ['fieldNickname', 'fieldContact', 'fieldContent'].forEach(id => {
+            document.getElementById(id).value = '';
+        });
+    }
+
+    async function submitComment() {
+        const nickname = document.getElementById('fieldNickname').value.trim();
+        const contact  = document.getElementById('fieldContact').value.trim();
+        const text     = document.getElementById('fieldContent').value.trim();
+
+        if (!nickname) { showToast('请填写昵称 😊', 'warn'); return; }
+        if (!text)     { showToast('内容不能为空', 'warn');   return; }
+
+        const content = replyingTo ? `@${replyingTo.nickname} ${text}` : text;
+
+        const btn = document.getElementById('submitBtn');
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> 发送中…';
+
+        try {
+            const res = await fetch(`${COMMENT_URL}/api/submit-comment`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    post_id:   currentPostId,
+                    parent_id: replyingTo ? replyingTo.id : null,
+                    nickname,
+                    contact:   contact || null,
+                    content,
+                }),
+            });
+
+            const result = await res.json();
+
+            if (!res.ok) {
+                // 服务器返回的错误信息直接展示给用户
+                showToast(result.error || '发送失败，请稍后重试', 'error');
+                return;
+            }
+
+            document.getElementById('fieldContent').value = '';
+            cancelReply();
+            showToast('留言已发送！✨');
+            await loadComments(currentPostId);
+
+        } catch (e) {
+            console.error(e);
+            showToast('网络错误，请稍后重试 😥', 'error');
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-paper-plane"></i> 发送留言';
+        }
+    }
+
+    /* ============================================================
+       工具函数
+    ============================================================ */
+    function initial(name = '') {
+        return ([...String(name)][0] || '?').toUpperCase();
+    }
+
+    function fmtDate(iso) {
+        return new Date(iso).toLocaleDateString('zh-CN', {
+            year: 'numeric', month: 'long', day: 'numeric'
+        });
+    }
+
+    function esc(s = '') {
+        return String(s)
+            .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+            .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    function escAttr(s = '') {
+        return String(s).replace(/'/g,"\\'");
+    }
+
+    function fmtContent(text = '') {
+        return esc(text)
+            .replace(/@([\u4e00-\u9fa5\w]+)/g, '<span class="mention">@$1</span>')
+            .replace(/\n/g, '<br>');
+    }
+
+    function showToast(msg, type = 'success') {
+        const colors = { success: 'rgba(29,29,31,.92)', warn: 'rgba(245,124,0,.92)', error: 'rgba(198,40,40,.92)' };
+        const toast = document.createElement('div');
+        toast.className = 'toast';
+        toast.style.background = colors[type] || colors.success;
+        toast.textContent = msg;
+        document.body.appendChild(toast);
+        setTimeout(() => {
+            toast.classList.add('out');
+            toast.addEventListener('animationend', () => toast.remove(), { once: true });
+        }, 2800);
+    }
+
+
+    /* ── 启动 ─────────────────────────────────────────────── */
+    init();
+    </script>
+</body>
+</html>
